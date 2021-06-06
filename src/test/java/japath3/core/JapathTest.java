@@ -1,28 +1,48 @@
 package japath3.core;
 
-import static japath3.core.Japath.__;
-import static japath3.core.Japath.all;
-import static japath3.core.Japath.fail;
-import static japath3.core.Japath.rex;
-import static japath3.core.Japath.singleNode;
-import static japath3.core.Japath.walk;
-import static japath3.core.Japath.BoolExpr.and;
-import static japath3.core.Japath.BoolExpr.or;
-import static japath3.core.Japath.Idx.__;
-import static japath3.core.Japath.Path.__;
-import static japath3.core.Japath.Property.__;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.junit.Assert.assertTrue;
+import java.io.File;
+import java.io.FileInputStream;
+import java.util.stream.Collectors;
 
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
-import japath3.core.Japath.Node;
-import japath3.core.Japath.Var;
-import japath3.wrapper.WJsonOrg;
+import static japath3.core.Japath.__;
+import static japath3.core.Japath.all;
+import static japath3.core.Japath.and;
+import static japath3.core.Japath.desc;
+import static japath3.core.Japath.empty;
+import static japath3.core.Japath.eq;
+import static japath3.core.Japath.filter;
+import static japath3.core.Node.nilo;
+import static japath3.core.Japath.not;
+import static japath3.core.Japath.ok;
+import static japath3.core.Japath.path;
+import static japath3.core.Japath.select;
+import static japath3.core.Japath.single;
+import static japath3.core.Japath.srex;
+import static japath3.core.Japath.union;
+import static japath3.core.Japath.walks;
+import static japath3.processing.Language.e_;
+import static japath3.processing.Language.stringify;
+import static japath3.util.JoeUtil.createJoe;
+import static japath3.wrapper.WJsonOrg.w_;
+import static java.util.stream.Collectors.toList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import japath3.core.Japath.Expr;
+import japath3.core.Japath.PathExpr;
+import japath3.util.Basics;
+import japath3.wrapper.WJsoup;
 
 
 public class JapathTest {
@@ -36,29 +56,25 @@ public class JapathTest {
 	}
 
 	@Test
-	public void test() {
-		fail("Not yet implemented");
-	}
-
-	@Test
 	public void testBasics() {
 
-		WJsonOrg wjo = new WJsonOrg(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
+		Node n = w_(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
 		
-//		NodeIter nit = Path.__(y -> wjo.get("a"), __(1), __("c")).eval(wjo);
-//
-//		nit.hasNext();
-//		System.out.println(nit.next());
 
-		Node x = walk(wjo, y -> wjo.get("a"), __(1), __("c"));
+		Node x = select(n, y -> n.get("a"), __(1), __("c"));
 
 		assertEquals("lala", x.val());
 
-		x = walk(wjo, y -> wjo.get("a"), all, __("c"));
+		x = select(n, y -> n.get("a"), __(0), __("cNop"));
 
+		assertEquals(nilo, x.val());
+
+		x = select(n, y -> n.get("a"), all, __("c"));
+		
 		assertEquals("lala", x.val());
-
-		x = walk(wjo, __("a"), __(0), __("b1", "b2"));
+		
+		x = select(n, __("a"), __(0), __("b1", "b2"));
+		x = select(n, e_("a[0].b1.b2") );
 
 		assertEquals((Integer) 88, x.val());
 
@@ -66,59 +82,64 @@ public class JapathTest {
 		Var h1 = Var.of();
 		Var<Integer> h2 = Var.of();
 
-		x = walk(wjo,
+		x = select(n,
 				__("a"), //
 				__(0), //
 				y -> {
-					h.bindVal(y.get("b").val());
+					h.bindNode(y.get("b").node());
 					Integer i = y.get("b").val();
-					return i == 99 ? singleNode(y) : fail;
+					return i == 99 ? single(y) : empty;
 				}, //
-				h1,
+//				h1,
+				Japath.bind(h1),
 				__("b1"), //
 				__("b2"));
 
 		Integer val = x.val();
 		assertEquals((Integer) 88, val);
 		assertEquals((Integer) 99, h.val());
-		assertEquals((Integer) 99, h1.getNode().get("b").val());
+		assertEquals((Integer) 99, h1.node().get("b").val());
 
 		h.clear().preventClearing(true);
 		h2.clear().preventClearing(true);
 
-		walk(wjo,
+		select(n,
 				__("a"), //
 				all,
-				rex("0"),
+				srex("0"),
 				and(//
-						__("b", h),
-						__(__("b1", "b2"), h2)));
+						path(__("b"), h),
+						path(__("b1", "b2"), h2)));
 
 		assertEquals((Integer) 99, h.val());
 		assertEquals((Integer) 88, h2.val());
 		
-		WJsonOrg wjo1 = new WJsonOrg(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
+		Node n1 = w_(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
 
-		h.clear().preventClearing(false);
-		h1.clear().preventClearing(false);
-		h2.clear().preventClearing(false);
+		h.preventClearing(false).clear();
+		h1.preventClearing(false).clear();
+		h2.preventClearing(false).clear();
 		
-		walk(wjo1,
-				__("a"),
-				all,
-				or(//
-						and(//
-								__("b", h),
-								__(__("b1", "b2"), h2)),
-						__("c", h)),
-
+//		Vars vars1 = new Vars().add(h, "h").add(h1, "h1").add(h2, "h2");
+		PathExpr pe = e_( //
+				"a.*.or("
+				+ "     and("
+				+ "        b $h, "
+				+ "        b1.b2 $h2),"
+				+ "     c $h1)");
+		
+//		n1.ctx.setVars(vars1);
+		Vars vars2 = n1.ctx.getVars();
+		select(n1,
+				pe,
 				y -> {
-					assertTrue(h.val().toString().equals("99") || h.val().toString().equals("lala"));
-					System.out.println("" + h + h2);
-					return singleNode(y);
+					String s = "" + vars2.v("h") + vars2.v("h1") + vars2.v("h2");
+					System.out.println(s);
+					assertTrue( s.equals("^`b`->99^null^`b2`->88") || s.equals("^null^`c`->lala^null") );
+					return single(y);
 				});
 		
-//		String s = "{" + "	'expr': {"
+//!!!		String s = "{" + "	'expr': {"
 //				+ "		'times': ["
 //				+ "			{'const': 1},"
 //				+ "			{'plus': ["
@@ -128,67 +149,561 @@ public class JapathTest {
 //				+ "		]}"
 //				+ "}";
 //
-//		WJsonOrg c = new WJsonOrg(new JSONObject(s));
+//		Node c = w_(new JSONObject(s));
 //
 //		h.clear();
 //		h1.clear();
 //		h2.clear();
 //
-//		x = walk(c,
+//		x = select(c,
 //				__("expr", "times"),
-//				and(__(0, h),
-//						__(__(1),
+//				and(path(__(0), h),
+//						path(__(1),
 //								__("plus"),
-//								and(__(0, h1), //
-//										__(1, h2)))),
+//								and(path(__(0), h1), //
+//										path(__(1), h2)))),
 //				y -> {
 //					Object o = //
-//							c.jo(p("expr",
-//									c.jo(p("plus",
-//											c.ja(c.jo(p("times", c.ja(h.val(), h1.val()))),
-//													c.jo(p("times", c.ja(h.val(), h2.val()))))))));
+//							c.prop(p("expr",
+//									c.prop(p("plus",
+//											c.array(c.prop(p("times", c.array(h.val(), h1.val()))),
+//													c.prop(p("times", c.array(h.val(), h2.val()))))))));
 //
-//					return new WJsonOrg(o);
+//					return singleo(o);
 //				});
 //		
 //		
-//		assertEquals("->{\"expr\":{\"plus\":[{\"times\":[{\"const\":1},{\"const\":2}]},{\"times\":[{\"const\":1},{\"const\":3}]}]}}", x.toString());
+//		assertEquals("``->{\"expr\": {\"plus\": [\n" + 
+//				"   {\"times\": [\n" + 
+//				"      {\"const\": 1},\n" + 
+//				"      {\"const\": 2}\n" + 
+//				"   ]},\n" + 
+//				"   {\"times\": [\n" + 
+//				"      {\"const\": 1},\n" + 
+//				"      {\"const\": 3}\n" + 
+//				"   ]}\n" + 
+//				"]}}", x.toString());
 //		
-//		assertEquals("^->{\"const\":1}^->{\"const\":2}^->{\"const\":3}", "" + h + h1 + h2);
+//		x = select(x, __("expr"), desc, __("const"), 
+//
+//				y -> {
+//					return single(y);
+//				},
+//
+//				filter( or( eq(1), eq(2)  )   ),
+//				
+//				y -> {
+//					return single(y);
+//				}
+//				);
+//		
+//		assertEquals((Integer) 1, x.val());
+//		assertEquals("^`0`->{\"const\": 1}^`0`->{\"const\": 2}^`1`->{\"const\": 3}", "" + h + h1 + h2);
+		
+		x = select(n1, e_("a[0].b"), eq(99));
 
+		assertEquals(true, x.val());
+		
+		x = select(n1, __("a"), __(0), filter(path(__("b"), eq(99))), __("b1", "b2"));
+		
+		assertEquals((Integer) 88, x.val());
+		
 	}
 
 	@Test
 	public void testDesc() {
 		
-//		WJsonOrg wjo = new WJsonOrg(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
+		Node n = w_(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
 //
-//		StringBuffer sb = new StringBuffer();
-//		walk(wjo, y -> wjo.get("a"), desc, y -> {
-//			sb.append(y.toString());
-//			return ok;
-//		});
-//
-//		assertEquals(
-//				"->[{\"b\":99,\"b1\":{\"b2\":88}},{\"c\":\"lala\"}]->{\"b\":99,\"b1\":{\"b2\":88}}->99->{\"b2\":88}->88->{\"c\":\"lala\"}->lala",
-//				sb.toString());
-//		
-//		sb.setLength(0);
-//		walk(wjo, y -> wjo.get("a"), desc, rex("b.*"), y -> {
-//			sb.append(y.toString());
-//			return ok;
-//		});
-//		
-//		assertEquals(
-//				"->99->{\"b2\":88}->88",
-//				sb.toString());
-//		
-//		sb.setLength(0);
-//		walk(wjo, y -> wjo.get("a"), desc, y -> {
-//			sb.append("-" + y.selector());
-//			System.out.println("-" + y.selector());
-//			return ok;
-//		});
+		StringBuilder sb = new StringBuilder();
+		select(n, y -> n.get("a"), desc, y -> {
+			sb.append(y.toString());
+			return empty;
+		});
+
+		assertEquals(
+				"`a`->[\n" + 
+				"   {\n" + 
+				"      \"b\": 99,\n" + 
+				"      \"b1\": {\"b2\": 88}\n" + 
+				"   },\n" + 
+				"   {\"c\": \"lala\"}\n" + 
+				"]`0`->{\n" + 
+				"   \"b\": 99,\n" + 
+				"   \"b1\": {\"b2\": 88}\n" + 
+				"}`b`->99`b1`->{\"b2\": 88}`b2`->88`1`->{\"c\": \"lala\"}`c`->lala",
+				sb.toString());
+		
+		sb.setLength(0);
+		select(n, y -> n.get("a"), desc, srex("b.*"), y -> {
+			sb.append(y.toString());
+			return empty;
+		});
+		
+		assertEquals(
+				"`b`->99`b1`->{\"b2\": 88}`b2`->88",
+				sb.toString());
+		
+		sb.setLength(0);
+		select(n, y -> n.get("a"), desc, y -> {
+			sb.append("-" + y.selector);
+			System.out.println("-" + y.selector);
+			return empty;
+		});
+		System.out.println(sb.toString());
 
 	}
+	
+	@Test
+	public void testSimplePath() {
+		
+		Node n = w_(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
+		Expr[] expr = { e_("a[0].b1") };
+		
+		select(n, expr).set("b2", 77);
+		
+		assertEquals((Integer) 77, select(n, e_("a[0].b1.b2")).val());
+
+		assertEquals((Integer) 77, select(n, e_("a.*"), e_("b1.b2")).val());
+		
+		n = w_(new JSONObject(" {a: [ {'§$%&H.Hb': 99, b1: {'b`2': 88} }, {'p#\"a-b': 'lala'  } ]}  "));
+		Expr[] expr1 = { e_("a[0].`§\\$%&H\\.Hb`") };
+		
+		Node x = select(n, expr1);
+		assertEquals((Integer) 99, x.val());
+		
+		x = select(n, e_("a[0]"), __("§\\$%&H\\.Hb") );
+		assertEquals((Integer) 99, x.val());
+		
+		x = select(n, e_("a[0].b1.`b\\`2`") );
+		assertEquals((Integer) 88, x.val());
+		
+		x = select(n, e_("a[1].`p#\"a-b`") );
+		assertEquals("lala", x.val());
+		
+		x = select(n, e_("a[1].`p#\"a-b`.match('l(.*)a').eq('al')") );
+		assertEquals(true, x.val());
+		
+	}
+	
+	@Test
+	public void testBool() {
+		
+		Node n = w_(new JSONObject(" {a: {b: false, c: 'lala'} }  "));
+		
+		Node x = select(n, __("a"), filter(path(__("b"), eq(false))), __("c"));
+		assertEquals("lala", x.val());
+		x = select(n, __("a"), filter(not(__("b"))), __("c"));
+		assertEquals("lala", x.val());
+		
+		n = w_(new JSONObject(" {a: {b: 1, c: 'lala'} }  "));
+		
+		assertIt(n, "[false]", "a.xor(b.eq(1), c.eq('lala'))");
+		assertIt(n, "[true]", "a.xor(b.eq(1), c.eq('lalax'))");
+	}
+	
+	@Test
+	public void testCmp() {
+		
+		Node n = w_(new JSONObject(" { v: 1, w: 1 }  "));
+		assertTrue(select(n, e_("v.lt(2)")).val());
+		assertTrue(select(n, e_("v.gt(0)")).val());
+		assertTrue(select(n, e_("v.le(1)")).val());
+		assertTrue(select(n, e_("v.ge(1)")).val());
+
+		assertFalse(select(n, e_("v.ge(v)")).val());
+		assertTrue(select(n, e_("v.ge($.w)")).val());
+	}
+
+	
+	@Test
+	public void testOptional() {
+		
+		Node n = w_(new JSONObject(" {a: {b: 99, c: 'lala'} }  "));
+		
+		Node x = select(n, e_("a.optional(b.type(Number))"));
+		assertEquals(true, x.val());
+		
+		x = select(n, e_("a.and(opt(bb))"));
+		assertEquals(true, x.val());
+		
+		x = select(n, e_("a.and(opt(bb).x)"));
+		assertEquals(true, x.val());
+		
+		x = select(n, e_("opt(aa).b"));
+		assertEquals(nilo, x.val());
+		
+		x = select(n, e_("opt(a).b"));
+		assertEquals(99, (Number) x.val());
+	}
+	
+	@Test
+	public void testCond() {
+		
+		Node n = w_(new JSONObject(" {a: {b: false, c: 'lala'} }  "));
+		
+		Node x = select(n, e_("a.cond(b, b, c)"));
+		assertEquals("lala", x.val());
+		
+		PathExpr e_ = e_("a.cond(not(b), b, c)");
+		x = select(n, e_);
+		assertEquals(false, x.val());
+		
+		System.out.println(stringify(e_, 1));
+
+		x = select(n, e_("a.cond(b, b, true)"));
+		assertEquals(true, x.val());
+		
+		x = select(n, e_("a.cond(b, c)"));
+//		assertEquals("{\"b\":false,\"c\":\"lala\"}", x.val().toString());
+		assertEquals(nilo, x.val());
+	}
+	
+	@Test
+	public void testImply() {
+		
+		Node n = w_(new JSONObject(" {a: {b: false, c: 'lala'} }  "));
+		
+		Node x = select(n, e_("a.imply(b, c)"));
+
+		assertEquals(true, x.val());
+		
+		x = select(n, e_("a.imply(not(b), false)"));
+		
+		assertEquals(false, x.val());
+	}
+	
+//!!!	@Test
+//	public void testConstruct() {
+//		
+//		JSONObject jo = new JSONObject();
+//		Ctx ctx = new Ctx().setConstruct(true);
+//		
+//		select(w_(jo, ctx), e_("a[0].b1.b2").prepConstruct());
+//		
+//		assertEquals("{\"a\":[{\"b1\":{\"b2\":\"nullo\"}}]}", jo.toString());
+//		
+//		jo = new JSONObject();
+//		select(w_(jo, ctx), e_("a.b1.b2[3]").prepConstruct());
+//		
+//		assertEquals("{\"a\":{\"b1\":{\"b2\":[null,null,null,\"nullo\"]}}}", jo.toString());
+//		
+//		select(w_(jo, ctx), e_("a.b1.c").prepConstruct());
+//		
+//		assertEquals("{\"a\":{\"b1\":{\"b2\":[null,null,null,\"nullo\"],\"c\":\"nullo\"}}}", jo.toString());
+//	}
+	
+	@Test
+	public void testModify() {
+		
+		JSONObject jo = new JSONObject("{l: [{i: 0}, {i: 1}, {i: 2}]}");
+
+		select(w_(jo), e_("l.*"), x -> {
+			x.set("i", (int) x.val("i") + 1);
+			return ok;
+		});
+		
+		assertEquals("{\"l\":[{\"i\":1},{\"i\":2},{\"i\":3}]}", jo.toString());
+	}
+
+	
+	@Test
+	public void testUnion() {
+		
+		JSONObject jo = new JSONObject(" {b: 99, c:'lala'}  ");
+		Node n = w_(jo);
+		
+		assertEquals("[`b`->99, `c`->lala]", Basics.stream(Japath.walki(n, union(__("b"), __("c")))).collect(Collectors.toList()).toString());
+
+	}
+
+	@Test
+	public void testUnion1() {
+		
+		StringBuilder sb = new StringBuilder();
+		
+		JSONObject jo = new JSONObject(" { "
+				+ "	root: [ "
+				+ "		{ "
+				+ "			a: 1 "
+				+ "		}, "
+				+ "		{ "
+				+ "			b: 2 "
+				+ "		} "
+				+ "	] "
+				+ "}  ");
+		
+		Node n = w_(jo);
+
+		PathExpr e = e_("root.*.union( a $x, b $y )");
+		Vars vars = new Vars();
+//		Var<Integer> x = vars.of("x");
+//		Var<Integer> y = vars.of("y");
+		
+		n.ctx.setVars(vars);
+		
+		Japath.walki(n, e).forEach(
+				z -> {
+					sb.append(vars.v("x") + ", " + vars.v("y") + "; ");
+//					System.out.println(z);
+//					System.out.println(x);
+//					System.out.println(y);
+				}
+				);
+//		System.out.println(sb.toString());
+
+		assertEquals("^`a`->1, ^null; ^null, ^`b`->2; ", sb.toString());
+		
+		assertIt(n, "[1, 2, 3]", "union(1,2,3)");
+		
+		assertIt(n, "[1, 2, 3]", "union(1, union(2,3))");
+		
+		assertIt(n, "[[{\"a\":1},{\"b\":2}]]", "new : [root.*]");
+	}
+	
+	@Test
+	public void testQuantifier() {
+		
+		JSONObject jo = new JSONObject("{ a:{b: 99, c:'lala'}, d:{c:'lalax'}, e:[1, 2]  }");
+		Node n = w_(jo);
+		
+		assertIt(n, "[true]", "e.some(*, eq(1))");
+		assertIt(n, "[false]", "e.some(*, eq(11))");
+		assertIt(n, "[false]", "e.some(d, eq(1))");
+		
+		StringBuilder sb = new StringBuilder();
+		
+		PathExpr e = e_("**.every(c, eq('lala'))");
+		System.out.println(stringify(e, 1));
+		select(n, e, x -> {
+			sb.append(" " + x.val());
+			return ok;
+		}).val();
+		
+		assertEquals(" true true true true false true true true true", sb.toString());
+//		assertEquals(" {\"a\":{\"b\":99,\"c\":\"lala\"},\"d\":{\"c\":\"lalax\"}} true 99 lala false lalax", sb.toString());
+		
+		e = e_("d.every(*, eq('lalax'))");
+		System.out.println(stringify(e, 1));
+		sb.setLength(0);
+		select(n, e, x -> {
+			sb.append(" " + (boolean) x.val());
+			return ok;
+		}).val();
+		
+		assertEquals(" true", sb.toString());
+		
+	}
+
+	@Test
+	public void testHasType() {
+		
+		JSONObject jo = new JSONObject("{ a:{b: 99, c:'lala'}, d:{c:'lalax'}  }");
+		Node n = w_(jo);
+		
+		StringBuilder sb = new StringBuilder();
+		select(n, e_("**.type(Number)"), x -> {
+			sb.append(" " + (boolean) x.val());
+			return ok;
+		});
+		assertEquals(" false false true false false false", sb.toString());
+
+	}
+	
+	@Test
+	@Ignore
+	public void testCallFunc() {
+		
+		PathExpr e = e_("a.call(`p.f`)(x, y)");
+		
+		System.out.println(stringify(e, 1));
+		
+	}
+	
+	@Test
+	public void testSelector() {
+
+		JSONObject jo = new JSONObject("{ a:{b: 99, c:'lala'}, d:{c:'lalax'}  }");
+		Node n = w_(jo);
+
+		assertIt(n, "[b]", "a.b.§");
+
+		assertIt(n, "[99, lala]", "a.*. filter( §.match('b|c') )");
+
+		
+	}
+	
+	@Test
+	public void testVarsUnif() throws Exception {
+		
+		Node n = w_(createJoe(new FileInputStream("src\\test\\resources\\japath3\\core\\person-1.json")));
+		
+		try {
+			assertIt(n, "[LinkedHashMap((s, ^`status`->hidden))]", " ?(status $s).telecom.*.use $s ");
+			
+//		n.ctx.clearVars();
+			assertIt(n, "[^`status`->hidden]", " ?(status$s).$s ");
+			
+//		n.ctx.clearVars();
+			assertIt(n, "[hidden]", " ?(status $s).telecom.*.use $s ");
+			
+		} catch (JapathException e) {
+			// so far no unif. allowed
+		}
+	}
+
+
+	@Test
+	public void testVars1() {
+
+		JSONObject jo = new JSONObject("{\n"
+				+ "	\"a\": [\n"
+				+ "		{\n"
+				+ "			\"x\": 1\n"
+				+ "		},\n"
+				+ "		{\n"
+				+ "			\"x\": 1,\n"
+				+ "			\"y\": 2\n"
+				+ "		},\n"
+				+ "		{\n"
+				+ "			\"x\": 1\n"
+				+ "		}\n"
+				+ "	]\n"
+				+ "}");
+		
+		Node n = w_(jo);
+		
+		assertIt(n, "[[{\"x\":1},{\"x\":1,\"y\":2},{\"x\":1}] | (y, ^`y`->2)]", "a ?(* ?(§.eq('1')) .y$_)", true);
+
+	}
+	
+	@Test
+	public void testArrays() {
+		
+		JSONObject jo = new JSONObject("{a: [ [ 1, 2, 3] ] }");
+		
+		Node n = w_(jo);
+		
+		assertIt(n, "[1]", "a[0][0]");
+		
+		assertIt(n, "[2, 3]", "a.*.*[#1..]");
+		
+		assertIt(n, "[1, 2]", "a.*.*[#0..1]");
+		
+		assertIt(n, "[3]", "a.*.*[#2..5]");
+		
+	}
+	
+	@Test
+//	@Ignore
+	public void testXml() {
+		
+		Element root = Jsoup.parse("<root>\n"
+				+ "    <a c=\"lolo\">\n"
+				+ "        <b>\n"
+				+ "            lala\n"
+				+ "        </b>\n"
+				+ "        <c1>\n"
+				+ "            lolo\n"
+				+ "        </c1>\n"
+				+ "        <b>\n"
+				+ "            lili\n"
+				+ "        </b>\n"
+				+ "    </a>\n"
+				+ "</root>", "", Parser.xmlParser()).root();
+		
+		Node n = WJsoup.w_(root);
+		
+		assertIt(n, "[lala, lili]", "root.a ?(and( c.eq('lolo'), c1.text().eq('lolo') )).b.text()");
+		
+		assertIt(n, "[<b> lala </b>]", "root.a[0]");
+		
+		assertIt(n, "[b, c1, b]", "root.a.*.§");
+		
+		assertIt(n, "[lolo]", "root.a.* ?(§.match('c.*')).text()");
+		
+		assertIt(n, "[lala, lili]", "root.**.a.b.text()");
+		
+		assertIt(n, "[lili]", "root.a.b[#1].text()");
+		
+	}
+
+	@Test
+//	@Ignore
+	public void testPouHtml() throws Exception {
+		
+		Element root = Jsoup.parse(new File("src/test/resources/japath3/core/source.html"), "utf-8").root();
+		Node n = WJsoup.w_(root);
+		
+		assertIt(n, usr, 
+				"html.**.article ?(class.eq('account'))"
+				+ ".dl.and("
+				+ "   _[1].kbd.text() $username,"
+				+ "   _[3].kbd.text() $passwd"
+				+ ")"
+				, true, false
+				);
+
+		n.ctx.clearVars();
+		assertIt(n, usr, 
+				"html.**.article ?(class.eq('account'))"
+						+ ".dl.and("
+						+ "   dd[#0].kbd.text() $username," // dd[0] instead of [1]
+						+ "   dd[#1].kbd.text() $passwd"
+						+ ")"
+						, true, false
+				);
+
+	}
+	
+	@Test
+//	@Ignore
+	public void testParamExpr() throws Exception {
+		
+		Node n = w_(new JSONObject(" {a: {b: false, c: 'lala'} }  "));
+		
+		assertIt(n, "[lala]", "def(bcond, cond(#0, #1, #2)) .a.bcond(b, b, c)");
+		
+		assertIt(n, "[false, lala]", "def(all, *) .a.all()");
+
+		assertIt(n, "[99]", "def(g, #0) .def(f, g(#0)) .a.f(99)");
+		
+		// recursion
+		try {
+			assertIt(n, "", "def(f, f()) .a.f()");
+			fail();
+		} catch (JapathException e) {
+			System.out.println(e);
+		}
+
+		
+	}
+
+	public static String cr(String s) { return s.replace("\r", ""); }
+	
+	public static void assertIt(Node n, String exp, String expr) { assertIt(n, exp, expr, false); }
+
+	public static void assertIt(Node n, String exp, String expr, boolean vars) { assertIt(n, exp, expr, vars, false); }
+
+	public static void assertIt(Node n, String exp, String expr, boolean vars, boolean printOnly) {
+		
+		assertIt(n, exp, e_(expr), vars, printOnly);
+	}
+	
+	public static void assertIt(Node n, String exp, Expr expr, boolean vars, boolean printOnly) {
+		String s = walks(n, expr).map(x -> {
+			return x.val().toString() + (vars ? " | " + n.ctx.getVars() : "");
+		}).collect(toList()).toString();
+		
+		if (printOnly) {
+			System.out.println(s);
+		} else {
+			assertEquals(exp.replace("\r", ""), s);
+		}
+	}
+	
+	
+	String usr = "[true "
+			+ "| (username, ^ybzftxdeldjltyjgni@ttirv.net),(passwd, ^BugMeNot123), true "
+			+ "| (username, ^bbc@mailnesia.com),(passwd, ^bbc@mailnesia.com)]";
 }
