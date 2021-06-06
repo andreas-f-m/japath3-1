@@ -351,7 +351,6 @@ public class Language {
 			Expr e_ = it.next();
 			ret += (i == 0 ? ""
 					: (e_ instanceof Bind || e_ instanceof Filter
-							|| e_ instanceof Assignment
 							|| e_ instanceof SubExpr
 							|| e_ instanceof Idx ? " " : delim))
 					+ stringify0(e_);
