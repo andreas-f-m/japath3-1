@@ -75,12 +75,14 @@ public class HttpService {
 			+ "}]\n"
 			;
 
+	public static HttpServer server;
+
 	public static void main(String[] args) throws Exception {
 
 		SocketConfig socketConfig = SocketConfig.custom().setSoTimeout(15000).setTcpNoDelay(true).build();
 		
 		int port = args.length == 0 ? 8082 : toInt(args[0]);
-		HttpServer server = ServerBootstrap.bootstrap()
+		server = ServerBootstrap.bootstrap()
 				.setListenerPort(port)
 				.setServerInfo("Test/1.1")
 				.setSocketConfig(socketConfig)

@@ -154,12 +154,12 @@ public class Schema {
 
 	public void extendPropHits(Node node) {
 
-		if (!propHits.containsKey(node.wo)) propHits = propHits.put(node.wo, HashSet.empty());
+		if (!propHits.containsKey(node.woVal())) propHits = propHits.put(node.woVal(), HashSet.empty());
 	}
 
 	public void addPropHit(Node node, String name) {
 		
-		if (propHits.containsKey(node.wo)) propHits = propHits.put(node.wo, null, (x, y) -> {
+		if (propHits.containsKey(node.woVal())) propHits = propHits.put(node.woVal(), null, (x, y) -> {
 			return x.add(name);
 		});
 	}
@@ -265,7 +265,7 @@ public class Schema {
 	private Set<String> selectorDiff(Node n) {
 		
 		HashSet<String> sels = HashSet.ofAll(it(n.childrenSelectors()));
-		return sels.diff(propHits.get(n.wo).getOrElse(sels));
+		return sels.diff(propHits.get(n.woVal()).getOrElse(sels));
 	}
 
 	/** n has to be the same object as for {@link #checkValidity(Node)}  */

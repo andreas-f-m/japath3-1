@@ -14,7 +14,6 @@ import io.vavr.collection.Map;
 import io.vavr.collection.Set;
 import io.vavr.collection.TreeSet;
 import japath3.core.Japath.NodeIter;
-import japath3.processing.Paths;
 import japath3.processing.StandardFuncs;
 import japath3.schema.Schema;
 
@@ -55,7 +54,7 @@ public class Ctx {
 		return this;
 	}
 
-	public void initSalience(Node n) { if (salient && defSelectors.isEmpty()) defSelectors = Paths.selectorNameSet(n); }
+	public void initSalience(Node n) { if (salient && defSelectors.isEmpty()) defSelectors = n.selectorNameSet(); }
 
 	public boolean salient() { return salient; }
 
@@ -137,6 +136,7 @@ public class Ctx {
 	public static NodeIter invoke(String ns, String func, Node node, NodeIter[] nits) {
 
 		Tuple2<String, String> nsf = Tuple.of(ns, func);
+		// (inst, method, has-val-args)
 		Tuple3<Object, Method, Boolean> m = methodMap.getOrElse(nsf, null);
 		if (m == null) {
 			m = getTarget(ns, func);

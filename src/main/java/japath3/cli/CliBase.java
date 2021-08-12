@@ -14,7 +14,7 @@ import japath3.util.Regex;
 
 public class CliBase {
 	
-	Options options;
+	public Options options;
 	String command;
 	String htext;
 	

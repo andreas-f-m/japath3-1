@@ -1,18 +1,5 @@
 package japath3.core;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.util.stream.Collectors;
-
-import org.json.JSONObject;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Element;
-import org.jsoup.parser.Parser;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import static japath3.core.Japath.__;
 import static japath3.core.Japath.all;
 import static japath3.core.Japath.and;
@@ -20,7 +7,6 @@ import static japath3.core.Japath.desc;
 import static japath3.core.Japath.empty;
 import static japath3.core.Japath.eq;
 import static japath3.core.Japath.filter;
-import static japath3.core.Node.nilo;
 import static japath3.core.Japath.not;
 import static japath3.core.Japath.ok;
 import static japath3.core.Japath.path;
@@ -29,18 +15,30 @@ import static japath3.core.Japath.single;
 import static japath3.core.Japath.srex;
 import static japath3.core.Japath.union;
 import static japath3.core.Japath.walks;
+import static japath3.core.Node.nilo;
 import static japath3.processing.Language.e_;
 import static japath3.processing.Language.stringify;
-import static japath3.util.JoeUtil.createJoe;
-import static japath3.wrapper.WJsonOrg.w_;
+import static japath3.wrapper.NodeFactory.w_;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
+import java.util.stream.Collectors;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import japath3.core.Japath.Expr;
 import japath3.core.Japath.PathExpr;
+import japath3.processing.Language.Env;
 import japath3.util.Basics;
 import japath3.wrapper.WJsoup;
 
@@ -58,7 +56,7 @@ public class JapathTest {
 	@Test
 	public void testBasics() {
 
-		Node n = w_(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
+		Node n = w_(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  ");
 		
 
 		Node x = select(n, y -> n.get("a"), __(1), __("c"));
@@ -76,7 +74,7 @@ public class JapathTest {
 		x = select(n, __("a"), __(0), __("b1", "b2"));
 		x = select(n, e_("a[0].b1.b2") );
 
-		assertEquals((Integer) 88, x.val());
+		assertEquals((Number) 88, ((Number) x.val()).intValue());
 
 		Var<Object> h = Var.of();
 		Var h1 = Var.of();
@@ -87,7 +85,7 @@ public class JapathTest {
 				__(0), //
 				y -> {
 					h.bindNode(y.get("b").node());
-					Integer i = y.get("b").val();
+					Integer i = ((Number) y.get("b").val()).intValue();
 					return i == 99 ? single(y) : empty;
 				}, //
 //				h1,
@@ -95,10 +93,10 @@ public class JapathTest {
 				__("b1"), //
 				__("b2"));
 
-		Integer val = x.val();
+		Integer val = ((Number) x.val()).intValue();
 		assertEquals((Integer) 88, val);
-		assertEquals((Integer) 99, h.val());
-		assertEquals((Integer) 99, h1.node().get("b").val());
+		assertEquals((Number) 99, ((Number) h.val()).intValue());
+		assertEquals((Number) 99, ((Number) h1.node().get("b").val()).intValue());
 
 		h.clear().preventClearing(true);
 		h2.clear().preventClearing(true);
@@ -111,10 +109,10 @@ public class JapathTest {
 						path(__("b"), h),
 						path(__("b1", "b2"), h2)));
 
-		assertEquals((Integer) 99, h.val());
-		assertEquals((Integer) 88, h2.val());
+		assertEquals((Number) 99, ((Number) h.val()).intValue());
+		assertEquals((Number) 88, ((Number) h2.val()).intValue());
 		
-		Node n1 = w_(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
+		Node n1 = w_(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  ");
 
 		h.preventClearing(false).clear();
 		h1.preventClearing(false).clear();
@@ -149,7 +147,7 @@ public class JapathTest {
 //				+ "		]}"
 //				+ "}";
 //
-//		Node c = w_(new JSONObject(s));
+//		Node c = w_(s);
 //
 //		h.clear();
 //		h1.clear();
@@ -206,14 +204,14 @@ public class JapathTest {
 		
 		x = select(n1, __("a"), __(0), filter(path(__("b"), eq(99))), __("b1", "b2"));
 		
-		assertEquals((Integer) 88, x.val());
+		assertEquals((Number) 88, ((Number) x.val()).intValue());
 		
 	}
 
 	@Test
 	public void testDesc() {
 		
-		Node n = w_(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
+		Node n = w_(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  ");
 //
 		StringBuilder sb = new StringBuilder();
 		select(n, y -> n.get("a"), desc, y -> {
@@ -222,16 +220,7 @@ public class JapathTest {
 		});
 
 		assertEquals(
-				"`a`->[\n" + 
-				"   {\n" + 
-				"      \"b\": 99,\n" + 
-				"      \"b1\": {\"b2\": 88}\n" + 
-				"   },\n" + 
-				"   {\"c\": \"lala\"}\n" + 
-				"]`0`->{\n" + 
-				"   \"b\": 99,\n" + 
-				"   \"b1\": {\"b2\": 88}\n" + 
-				"}`b`->99`b1`->{\"b2\": 88}`b2`->88`1`->{\"c\": \"lala\"}`c`->lala",
+				"`a`->[{\"b\":99,\"b1\":{\"b2\":88}},{\"c\":\"lala\"}]`0`->{\"b\":99,\"b1\":{\"b2\":88}}`b`->99`b1`->{\"b2\":88}`b2`->88`1`->{\"c\":\"lala\"}`c`->lala",
 				sb.toString());
 		
 		sb.setLength(0);
@@ -241,7 +230,7 @@ public class JapathTest {
 		});
 		
 		assertEquals(
-				"`b`->99`b1`->{\"b2\": 88}`b2`->88",
+				"`b`->99`b1`->{\"b2\":88}`b2`->88",
 				sb.toString());
 		
 		sb.setLength(0);
@@ -257,7 +246,7 @@ public class JapathTest {
 	@Test
 	public void testSimplePath() {
 		
-		Node n = w_(new JSONObject(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  "));
+		Node n = w_(" {a: [ {b: 99, b1: {b2: 88} }, {c: 'lala'  } ]}  ");
 		Expr[] expr = { e_("a[0].b1") };
 		
 		select(n, expr).set("b2", 77);
@@ -266,17 +255,17 @@ public class JapathTest {
 
 		assertEquals((Integer) 77, select(n, e_("a.*"), e_("b1.b2")).val());
 		
-		n = w_(new JSONObject(" {a: [ {'§$%&H.Hb': 99, b1: {'b`2': 88} }, {'p#\"a-b': 'lala'  } ]}  "));
+		n = w_(" {a: [ {'§$%&H.Hb': 99, b1: {'b`2': 88} }, {'p#\"a-b': 'lala'  } ]}  ");
 		Expr[] expr1 = { e_("a[0].`§\\$%&H\\.Hb`") };
 		
 		Node x = select(n, expr1);
-		assertEquals((Integer) 99, x.val());
+		assertEquals((Number) 99, ((Number) x.val()).intValue());
 		
 		x = select(n, e_("a[0]"), __("§\\$%&H\\.Hb") );
-		assertEquals((Integer) 99, x.val());
+		assertEquals((Number) 99, ((Number) x.val()).intValue());
 		
 		x = select(n, e_("a[0].b1.`b\\`2`") );
-		assertEquals((Integer) 88, x.val());
+		assertEquals((Number) 88, ((Number) x.val()).intValue());
 		
 		x = select(n, e_("a[1].`p#\"a-b`") );
 		assertEquals("lala", x.val());
@@ -289,14 +278,14 @@ public class JapathTest {
 	@Test
 	public void testBool() {
 		
-		Node n = w_(new JSONObject(" {a: {b: false, c: 'lala'} }  "));
+		Node n = w_(" {a: {b: false, c: 'lala'} }  ");
 		
 		Node x = select(n, __("a"), filter(path(__("b"), eq(false))), __("c"));
 		assertEquals("lala", x.val());
 		x = select(n, __("a"), filter(not(__("b"))), __("c"));
 		assertEquals("lala", x.val());
 		
-		n = w_(new JSONObject(" {a: {b: 1, c: 'lala'} }  "));
+		n = w_(" {a: {b: 1, c: 'lala'} }  ");
 		
 		assertIt(n, "[false]", "a.xor(b.eq(1), c.eq('lala'))");
 		assertIt(n, "[true]", "a.xor(b.eq(1), c.eq('lalax'))");
@@ -305,11 +294,22 @@ public class JapathTest {
 	@Test
 	public void testCmp() {
 		
-		Node n = w_(new JSONObject(" { v: 1, w: 1 }  "));
-		assertTrue(select(n, e_("v.lt(2)")).val());
+		Node n = w_(" { v: 1, w: 1, a: true, b: \"lala\" }  ");
+
+		assertTrue(select(n, e_("a.eq($.a)")).val());
+		assertTrue(select(n, e_("a.eq(true)")).val());
+		assertFalse(select(n, e_("a.eq(false)")).val());
+		assertFalse(select(n, e_("false.eq($.a)")).val());
+
+		assertTrue(select(n, e_("b.eq('lala')")).val());
+		
+		assertTrue(select(n, e_("v.lt(2)")).val());	
 		assertTrue(select(n, e_("v.gt(0)")).val());
 		assertTrue(select(n, e_("v.le(1)")).val());
 		assertTrue(select(n, e_("v.ge(1)")).val());
+		
+		assertTrue(select(n, e_("v.ge(-1.4E2)")).val());
+//		assertTrue(select(n, e_("v.ge(-1.88)")).val());
 
 		assertFalse(select(n, e_("v.ge(v)")).val());
 		assertTrue(select(n, e_("v.ge($.w)")).val());
@@ -319,7 +319,7 @@ public class JapathTest {
 	@Test
 	public void testOptional() {
 		
-		Node n = w_(new JSONObject(" {a: {b: 99, c: 'lala'} }  "));
+		Node n = w_(" {a: {b: 99, c: 'lala'} }  ");
 		
 		Node x = select(n, e_("a.optional(b.type(Number))"));
 		assertEquals(true, x.val());
@@ -334,13 +334,13 @@ public class JapathTest {
 		assertEquals(nilo, x.val());
 		
 		x = select(n, e_("opt(a).b"));
-		assertEquals(99, (Number) x.val());
+		assertEquals((Number) 99, ((Number) x.val()).intValue());
 	}
 	
 	@Test
 	public void testCond() {
 		
-		Node n = w_(new JSONObject(" {a: {b: false, c: 'lala'} }  "));
+		Node n = w_(" {a: {b: false, c: 'lala'} }  ");
 		
 		Node x = select(n, e_("a.cond(b, b, c)"));
 		assertEquals("lala", x.val());
@@ -362,7 +362,7 @@ public class JapathTest {
 	@Test
 	public void testImply() {
 		
-		Node n = w_(new JSONObject(" {a: {b: false, c: 'lala'} }  "));
+		Node n = w_(" {a: {b: false, c: 'lala'} }  ");
 		
 		Node x = select(n, e_("a.imply(b, c)"));
 
@@ -396,21 +396,22 @@ public class JapathTest {
 	@Test
 	public void testModify() {
 		
-		JSONObject jo = new JSONObject("{l: [{i: 0}, {i: 1}, {i: 2}]}");
+		String jo = "{l: [{i: 0}, {i: 1}, {i: 2}]}";
 
-		select(w_(jo), e_("l.*"), x -> {
-			x.set("i", (int) x.val("i") + 1);
+		Node n = w_(jo);
+		select(n, e_("l.*"), x -> {
+			x.set("i", ((Number) x.val("i")).intValue() + 1);
 			return ok;
 		});
 		
-		assertEquals("{\"l\":[{\"i\":1},{\"i\":2},{\"i\":3}]}", jo.toString());
+		assertEquals("{\"l\":[{\"i\":1},{\"i\":2},{\"i\":3}]}", n.val().toString());
 	}
 
 	
 	@Test
 	public void testUnion() {
 		
-		JSONObject jo = new JSONObject(" {b: 99, c:'lala'}  ");
+		String jo = " {b: 99, c:'lala'}  ";
 		Node n = w_(jo);
 		
 		assertEquals("[`b`->99, `c`->lala]", Basics.stream(Japath.walki(n, union(__("b"), __("c")))).collect(Collectors.toList()).toString());
@@ -422,7 +423,7 @@ public class JapathTest {
 		
 		StringBuilder sb = new StringBuilder();
 		
-		JSONObject jo = new JSONObject(" { "
+		String jo = " { "
 				+ "	root: [ "
 				+ "		{ "
 				+ "			a: 1 "
@@ -431,7 +432,7 @@ public class JapathTest {
 				+ "			b: 2 "
 				+ "		} "
 				+ "	] "
-				+ "}  ");
+				+ "}  ";
 		
 		Node n = w_(jo);
 
@@ -464,7 +465,7 @@ public class JapathTest {
 	@Test
 	public void testQuantifier() {
 		
-		JSONObject jo = new JSONObject("{ a:{b: 99, c:'lala'}, d:{c:'lalax'}, e:[1, 2]  }");
+		String jo = "{ a:{b: 99, c:'lala'}, d:{c:'lalax'}, e:[1, 2]  }";
 		Node n = w_(jo);
 		
 		assertIt(n, "[true]", "e.some(*, eq(1))");
@@ -498,7 +499,7 @@ public class JapathTest {
 	@Test
 	public void testHasType() {
 		
-		JSONObject jo = new JSONObject("{ a:{b: 99, c:'lala'}, d:{c:'lalax'}  }");
+		String jo = "{ a:{b: 99, c:'lala'}, d:{c:'lalax'}  }";
 		Node n = w_(jo);
 		
 		StringBuilder sb = new StringBuilder();
@@ -523,7 +524,7 @@ public class JapathTest {
 	@Test
 	public void testSelector() {
 
-		JSONObject jo = new JSONObject("{ a:{b: 99, c:'lala'}, d:{c:'lalax'}  }");
+		String jo = "{ a:{b: 99, c:'lala'}, d:{c:'lalax'}  }";
 		Node n = w_(jo);
 
 		assertIt(n, "[b]", "a.b.§");
@@ -534,9 +535,35 @@ public class JapathTest {
 	}
 	
 	@Test
+	@Ignore
 	public void testVarsUnif() throws Exception {
 		
-		Node n = w_(createJoe(new FileInputStream("src\\test\\resources\\japath3\\core\\person-1.json")));
+		Node n = w_("{\n"
+				+ "   \"name\": \"Miller\",\n"
+				+ "   \"age\": 17,\n"
+				+ "   \"driverLic\": 3,\n"
+				+ "   \"status\": \"hidden\",\n"
+				+ "   \"address\": {\n"
+				+ "      \"postal-code\": 11111,\n"
+				+ "      \"city\": \"PleasantVille\",\n"
+				+ "      \"absent\": false\n"
+				+ "   },\n"
+				+ "   \"telecom\": [\n"
+				+ "      {\n"
+				+ "         \"use\": \"hidden\",\n"
+				+ "         \"value\": \"(03) 5555 0000\"\n"
+				+ "      },\n"
+				+ "      {\n"
+				+ "         \"use\": \"home\",\n"
+				+ "         \"value\": \"(03) 5555 1111\",\n"
+				+ "         \"kind\": \"smart\"\n"
+				+ "      }\n"
+				+ "   ],\n"
+				+ "   \"shopping\": [\n"
+				+ "      {\"p#123\": {\"status\": \"ordered\"}},\n"
+				+ "      {\"p#456\": {\"status\": \"shipped\"}}\n"
+				+ "   ]\n"
+				+ "}");
 		
 		try {
 			assertIt(n, "[LinkedHashMap((s, ^`status`->hidden))]", " ?(status $s).telecom.*.use $s ");
@@ -549,6 +576,7 @@ public class JapathTest {
 			
 		} catch (JapathException e) {
 			// so far no unif. allowed
+			System.out.println(e);
 		}
 	}
 
@@ -556,7 +584,7 @@ public class JapathTest {
 	@Test
 	public void testVars1() {
 
-		JSONObject jo = new JSONObject("{\n"
+		String jo = "{\n"
 				+ "	\"a\": [\n"
 				+ "		{\n"
 				+ "			\"x\": 1\n"
@@ -569,7 +597,7 @@ public class JapathTest {
 				+ "			\"x\": 1\n"
 				+ "		}\n"
 				+ "	]\n"
-				+ "}");
+				+ "}";
 		
 		Node n = w_(jo);
 		
@@ -580,7 +608,7 @@ public class JapathTest {
 	@Test
 	public void testArrays() {
 		
-		JSONObject jo = new JSONObject("{a: [ [ 1, 2, 3] ] }");
+		String jo = "{a: [ [ 1, 2, 3] ] }";
 		
 		Node n = w_(jo);
 		
@@ -660,7 +688,7 @@ public class JapathTest {
 //	@Ignore
 	public void testParamExpr() throws Exception {
 		
-		Node n = w_(new JSONObject(" {a: {b: false, c: 'lala'} }  "));
+		Node n = w_(" {a: {b: false, c: 'lala'} }  ");
 		
 		assertIt(n, "[lala]", "def(bcond, cond(#0, #1, #2)) .a.bcond(b, b, c)");
 		
@@ -676,8 +704,28 @@ public class JapathTest {
 			System.out.println(e);
 		}
 
+		// TODO not intended !
+		assertIt(n, "[lala]", "def(bcond, a.cond(#0, #1, #2)) .bcond(b, b, c)");
+		
 		
 	}
+	
+	@Test public void testModular() {
+		
+		Node n = w_(" {a: {b: false, c: 'lala'} }  ");
+		
+		Env env = new Env();
+//		PathExpr e = e_("def(bcond, cond(#0, #1, #2)) ");
+		PathExpr e = e_(env, "def(bcond, cond(#0, #1, #2)) ", false, false);
+				
+		PathExpr e_ = e_(env, "a.bcond(b, b, c)", false, false);
+		
+		Object val = select(n, e, e_).val();
+		
+		assertEquals("lala", val.toString());
+	}
+
+
 
 	public static String cr(String s) { return s.replace("\r", ""); }
 	

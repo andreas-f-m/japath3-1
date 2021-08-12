@@ -1,13 +1,11 @@
 package japath3.wrapper;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import static japath3.core.Japath.empty;
-import static japath3.core.Japath.nodeIter;
 import static japath3.core.Japath.single;
 import static japath3.core.Node.PrimitiveType.Any;
 import static japath3.core.Node.PrimitiveType.Boolean;
@@ -15,46 +13,42 @@ import static japath3.core.Node.PrimitiveType.Number;
 import static japath3.core.Node.PrimitiveType.String;
 
 import japath3.core.Ctx;
-import japath3.core.Japath;
 import japath3.core.Japath.NodeIter;
+import japath3.util.JoeUtil;
 import japath3.core.Node;
 
 public class WJsonOrg extends Node {
 	
+	public static boolean pretty = false;
+	
 	public WJsonOrg(Object wo, Object selector, Node previousNode, Ctx ctx) { super(wo, selector, previousNode, ctx); }	
 	
 	public static Node w_(Object x) {
-//		return w_(x, "", null, null).setCtx(new Ctx());
-		return w_(x, new Ctx());
-	}
-	public static Node w_(Object x, Ctx ctx) {
-		return w_(x, "", null, ctx);
-	}
-	public static Node w_(Object wo, Object selector, Node previousNode, Ctx ctx) {
-		return new WJsonOrg(wo, selector, previousNode, ctx);
-	}
-	public Node w_(Object x, Object selector) {
-		return create(x, selector, this, ctx);
+//		return new WJsonOrg(x, "", null, new Ctx());
+		return NodeFactory.w_(x);
 	}
 	
 	@Override public Node create(Object wo, Object selector, Node previousNode, Ctx ctx) {
 		return new WJsonOrg(wo, selector, previousNode, ctx);
 	}
 	
-	@Override public Object createWo(boolean array) { return array ? new JSONArray() : new JSONObject(); }
+	@Override public Object createWo(boolean array) { return array ? new JSONArray() : 
+//		new JSONObject();
+		JoeUtil.createJoe();
+	}
 		
 	@Override
 	public NodeIter get(String name) {
 		
 		Object o = wo instanceof JSONObject ? ((JSONObject) wo).opt(name) : null; // TODO undef?
-		return o == null ? empty : single(w_(o, name));
+		return o == null ? empty : single(create(o, name));
 	}
 
 	@Override
 	public NodeIter get(int i) {
 		
 		Object o = wo instanceof JSONArray ?  ((JSONArray) wo).opt(i) : null; // TODO undef?
-		return o == null ? empty : single(w_(o, i));
+		return o == null ? empty : single(create(o, i));
 	}
 	
 	@Override public boolean exists(Object selector) {
@@ -111,13 +105,6 @@ public class WJsonOrg extends Node {
 	}
 	
 	@Override
-	public NodeIter desc() {
-		ArrayList<Node> descs = new ArrayList<Node>();
-		gatherDesc(descs, create(wo, selector, previousNode, ctx));
-		return nodeIter(descs.iterator());
-	}
-	
-	@Override
 	public Node set(String name, Object o) {
 		((JSONObject) wo).put(name, o); // TODO overwrite
 		return this;
@@ -137,6 +124,12 @@ public class WJsonOrg extends Node {
 	@Override public Object woCopy() {
 		return wo instanceof JSONObject ? new JSONObject(wo.toString())
 				: wo instanceof JSONArray ? new JSONArray(wo.toString()) : wo;
+	}
+	
+	public static Object parse(String s) {
+		return s.trim().startsWith("{") ? new JSONObject(s)
+//				return s.matches("\s*\\{.+") ? new JSONObject(s)
+				: new JSONArray(s);
 	}
 	
 	@Override public Object nullWo() { return JSONObject.NULL; }
@@ -165,15 +158,13 @@ public class WJsonOrg extends Node {
 	@Override public boolean isLeaf() { return !(wo instanceof JSONObject || wo instanceof JSONArray); } 
 	@Override public boolean isArray() { return wo instanceof JSONArray; } 
 	
-	@Override public NodeIter text() { return Japath.singleObject(wo.toString(), previousNode); }
-	
 	@Override
 	public String toString() {
 		
 		return 
 				"`" + selector +
-				"`->" + (wo instanceof JSONObject ? ((JSONObject) wo).toString(3)
-				: wo instanceof JSONArray ? ((JSONArray) wo).toString(3) : wo.toString());
+				"`->" + (wo instanceof JSONObject ? ((JSONObject) wo).toString(pretty ? 3 : 0)
+				: wo instanceof JSONArray ? ((JSONArray) wo).toString(pretty ? 3 : 0) : wo.toString());
 	}
 	
 	

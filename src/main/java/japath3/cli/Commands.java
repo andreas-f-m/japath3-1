@@ -19,7 +19,6 @@ import static japath3.util.Basics.stream;
 import static japath3.util.Basics.Switches.checkSwitches;
 import static japath3.util.Basics.Switches.switchEnabled;
 import static japath3.util.JoeUtil.createJoe;
-import static japath3.wrapper.WJsonOrg.w_;
 import static java.util.stream.Collectors.joining;
 
 import io.vavr.Tuple2;
@@ -32,6 +31,8 @@ import japath3.schema.Schema;
 import japath3.schema.Schema.Mode;
 import japath3.service.HttpService;
 import japath3.util.JoeUtil;
+import japath3.wrapper.NodeFactory;
+import japath3.wrapper.WJsonOrg;
 import japath3.wrapper.WJsoup;
 
 //String c = CliBase.getCommand(args, "(select|schema)");
@@ -182,7 +183,7 @@ public class Commands {
 
 	public static String exec(JSONObject request) {
 
-		Node nReq = w_(request);
+		Node nReq = NodeFactory.w_(request, WJsonOrg.class);
 		// System.out.println(request.toString(3));
 		// System.out.println(schema.getSchemaExpr());
 		// System.out.println(new Schema().buildConstraintText(nReq));
@@ -262,7 +263,7 @@ public class Commands {
 		
 		Node n = null;
 		if (oType.equals("json")) {
-			n = w_(body instanceof JSONObject ? body : createJoe(body.toString()));
+			n = NodeFactory.w_(body instanceof JSONObject ? body : createJoe(body.toString()), WJsonOrg.class);
 		} else { // xml
 			Document doc = Jsoup.parse(body.toString(), "", Parser.xmlParser());
 			if (doc.children().isEmpty()) throw new JapathException("no tags given");

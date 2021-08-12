@@ -7,14 +7,20 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static japath3.core.Japath.empty;
+import static japath3.core.Japath.nodeIter;
 import static japath3.core.Japath.single;
+import static japath3.core.Japath.walkr;
 import static japath3.processing.Language.stringify;
 
+import io.vavr.collection.Set;
+import io.vavr.collection.TreeSet;
 import japath3.core.Japath.Assignment;
 import japath3.core.Japath.Assignment.Scope;
+import japath3.core.Japath.NodeProcessing.Kind;
 import japath3.core.Japath.NodeIter;
 import japath3.core.Japath.Selection;
 import japath3.schema.Schema;
+import japath3.util.Basics.Ref;
 
 /**
  *
@@ -62,7 +68,7 @@ public abstract class Node {
 		String, Number, Boolean, Any
 	}
 
-	public Object wo; // wrapped object
+	protected Object wo; // wrapped object
 	public boolean construct;
 	public Object selector;
 	public int order;
@@ -104,6 +110,9 @@ public abstract class Node {
 	// TODO deferred
 //	public Node copy() { return create(woCopy(), selector, previousNode, ctx).setConstruct(construct).setOrder(order); }
 	
+	public Node create(Object x, Object selector) {
+		return create(x, selector, this, ctx);
+	}
 	public Node create(Object wo, Object selector, Node previousNode, Ctx ctx) {
 		throw new UnsupportedOperationException("'create()' not supported for '" + this + "'");
 	};
@@ -160,8 +169,14 @@ public abstract class Node {
 	public Iterator<String> childrenSelectors() { throw new UnsupportedOperationException("'childrenSelectors' not supported for '" + this + "'"); }
 	public NodeIter all() { return all(wo); };
 	public abstract NodeIter all(Object o);
-	public abstract NodeIter desc();
-	public abstract NodeIter text();
+//	public abstract NodeIter desc();
+	public NodeIter desc() {
+		ArrayList<Node> descs = new ArrayList<Node>();
+		gatherDesc(descs, create(wo, selector, previousNode, ctx));
+		return nodeIter(descs.iterator());
+	}
+//	public abstract NodeIter text();
+	public NodeIter text() { return Japath.singleObject(wo.toString(), previousNode); }
 	public boolean isCheckedLeaf() {
 		if (wo == undefWo) throw new JapathException("operation on undef node '" + this + "' (assign value first)");
 		else return isLeaf();
@@ -204,12 +219,9 @@ public abstract class Node {
 	public <T> T val(int i, T d) { return get(i).val(d); };
 	public <T> T val() {
 		if (wo == undefWo) throw new JapathException("operation on undef node '" + this + "' (assign value first)");
-		return (T) wo; 
-		}
-	public <T> Node setVal(T val) {
-		wo = val;
-		return this;
+		return (T) woVal(); 
 	}
+	public Object woVal() { return wo; }
 	public Node setCtx(Ctx ctx) {
 		this.ctx = ctx;
 		return this;
@@ -260,7 +272,7 @@ public abstract class Node {
 		for (Node x: io.vavr.collection.List.ofAll(this.nodePath()).reverse()) {
 			// recursion failure
 			if (x != this && x.wo == this.wo) {
-				throw new JapathException("resursion caused by " + assignment);
+				throw new JapathException("resursion caused by " + (assignment == null ? "internal" : assignment));
 			}
 			Node prev;
 			if ((prev = x.previousNode) != null) {
@@ -273,6 +285,21 @@ public abstract class Node {
 //			x.setConstruct(true);
 		}
 	}
+	
+	public Set<String> selectorNameSet() {
+		
+		Ref<Set<String>> ret = Ref.of(TreeSet.empty());
+		walkr(this, (x, kind, level, orderNo, isLast) -> {
+			if (kind == Kind.Pre) {
+				Object selector = x.selector;
+				if (selector instanceof String) ret.r = ret.r.add(selector.toString());
+			}
+		});
+		return ret.r;
+		
+	}
+
+
 
 	public <T> T v(String name) {
 		

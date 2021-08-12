@@ -114,7 +114,7 @@ public class Basics {
 				dec += ' ';
 				i++;
 			} else { // must be special
-				dec += new Character((char) Integer.parseInt(s.substring(i + 1, i + 5), 16));
+				dec += Character.valueOf((char) Integer.parseInt(s.substring(i + 1, i + 5), 16));
 				i = i + 5;
 			}
 		}

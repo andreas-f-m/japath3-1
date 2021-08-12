@@ -79,4 +79,9 @@ public class Regex {
 		return false;
 	}
 
+	public static String extract(String input, String regex, String def) {
+
+		Matcher matcher = Pattern.compile(regex).matcher(input);
+		return matcher.find() ?  matcher.group(1) : def;
+	}
 }

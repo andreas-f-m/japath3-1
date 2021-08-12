@@ -57,7 +57,7 @@ public class LanguageTest extends Language {
 	@Test public void testLang() { 
 		
 		String input = "or(`x \" \"`, imply(a, b)). some(*, c). b$v.*. a[1][2][#8]. a[#1..]. a[#1..2] .?(a). x?(a). `c\\` \\` §$` . [a, b]. union(or(a, b), union(or(c, d)))."
-				+ "**. * .union ( a, b ). $ x .* . eq ( 88 ). eq ( \"lolo\" ). eq ( $x ). §. match('la\\'la'). cond(a, b, c). self. text(). "
+				+ "**. * .union ( a, b ). $ x .* . eq ( 88 ). eq ( -1.44E11 ). eq ( \"lolo\" ). eq ( $x ). §. match('la\\'la'). cond(a, b, c). self. text(). "
 				+ "def(func, a.b.#1). func(x, y.z) { \"a\" :(c.d)}. a {x.y, z}. java::sys::func(a, b.c). {c : 0}. j::sys::func(). sys::func(). ::complete";
 		
 		Tuple2<JSONObject, String> ast = Language.getAst(input);
@@ -115,7 +115,7 @@ public class LanguageTest extends Language {
 																				path(__("v"), type("Number"))))))))));
 
 	}
-
+	
 	String es = "or(\r\n"
 			+ "	`x \" \"`,\r\n"
 			+ "	imply(\r\n"
@@ -152,6 +152,8 @@ public class LanguageTest extends Language {
 			+ "*.\r\n"
 			+ "eq(\r\n"
 			+ "	88).\r\n"
+			+ "eq(\r\n"
+			+ "	-144000000000).\r\n"
 			+ "eq(\r\n"
 			+ "	'lolo').\r\n"
 			+ "eq(\r\n"
@@ -191,7 +193,7 @@ public class LanguageTest extends Language {
 			+ "		0)}.\r\n"
 			+ "java::sys::func(\r\n"
 			+ "	).\r\n"
-			+ "java::sys::func(\r\n"
+			+ "javascript::sys::func(\r\n"
 			+ "	).\r\n"
 			+ "::complete(\r\n"
 			+ "	)";
@@ -316,6 +318,10 @@ public class LanguageTest extends Language {
 			+ "   }}},\r\n"
 			+ "   {\"step\": {\"compare\": {\r\n"
 			+ "      \"op\": \"eq\",\r\n"
+			+ "      \"arg\": {\"constant\": -144000000000}\r\n"
+			+ "   }}},\r\n"
+			+ "   {\"step\": {\"compare\": {\r\n"
+			+ "      \"op\": \"eq\",\r\n"
 			+ "      \"arg\": {\"constant\": \"lolo\"}\r\n"
 			+ "   }}},\r\n"
 			+ "   {\"step\": {\"compare\": {\r\n"
@@ -391,7 +397,7 @@ public class LanguageTest extends Language {
 			+ "   {\"step\": {\"funcCall\": {\r\n"
 			+ "      \"func\": \"func\",\r\n"
 			+ "      \"ns\": \"sys\",\r\n"
-			+ "      \"kind\": \"java\"\r\n"
+			+ "      \"kind\": \"javascript\"\r\n"
 			+ "   }}},\r\n"
 			+ "   {\"step\": {\"funcCall\": {\r\n"
 			+ "      \"func\": \"complete\",\r\n"

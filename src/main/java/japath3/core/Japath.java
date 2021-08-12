@@ -263,7 +263,9 @@ public class Japath {
 
 		public ParamAppl(int idx) { this.i = idx; }
 
-		@Override public NodeIter eval(Node node) { return exprs[0].eval(node); }
+		@Override public NodeIter eval(Node node) { 
+			if (exprs.length == 0) throw new JapathException("parameter '" + this + "' not bound");
+			return exprs[0].eval(node); }
 		@Override public void visit(BiConsumer<Expr, Boolean> c) { c.accept(this, true); }
 		@Override public String toString() { return "#" + i; }
 	}
@@ -488,14 +490,18 @@ public class Japath {
 			NodeIter nit = exprs[0].eval(node);
 			if (nit.hasNext()) {
 				
-				T o = nit.val();
+				Object o = nit.val();
 				Object v = node.val();
 				
 				if (op == eq || op == neq || op == lt || op == gt || op == le || op == ge) {
 					
+					// type coercion for numbers
+					if (o instanceof Number) o = ((Number) o).doubleValue();
+					if (v instanceof Number) v = ((Number) v).doubleValue();
+					//
 					checkVals(node, o, v);
 						
-					int cmp = o == nullo ? (v == node.nullWo() ? 0 : -1) : ((Comparable<T>) v).compareTo(o);
+					int cmp = o == nullo ? (v == node.nullWo() ? 0 : -1) : ((Comparable<Object>) v).compareTo(o);
 					ret = op == lt ? cmp < 0 //
 							: op == gt ? cmp > 0 //
 									: op == le ? cmp <= 0 //
@@ -512,13 +518,13 @@ public class Japath {
 			}
 			return singleBool(ret, node); 
 		}
-		private void checkVals(Node node, T o, Object v) {
+		private void checkVals(Node node, Object o, Object v) {
 			
 			if (o != nullo && !v.getClass().equals(o.getClass())) { 
 				throw new JapathException(
 						"'" + v + "' and '" + o + "' must be of same class (found '"
 					+ v.getClass() + "', '"
-					+ o.getClass() + "')");
+					+ o.getClass() + "'; no type coercion yet)");
 			}
 			if (o != nullo && !(v instanceof Comparable))
 				throw new JapathException("'" + v.getClass() + "' is not instance of 'Comparable' at '" + this + "'");
@@ -529,13 +535,13 @@ public class Japath {
 		@Override public String toString() { return op + "(" + exprs[0] + ")"; }
 	}
 	
-	public static class JavaCall extends CompoundExpr {
+	public static class ExternalCall extends CompoundExpr {
 		
 		public String kind;
 		public String ns;
 		public String func;
 		
-		private JavaCall(String kind, String ns, String func, Expr[] exprs) {
+		private ExternalCall(String kind, String ns, String func, Expr[] exprs) {
 			this.kind = kind;
 			this.ns = ns;
 			this.func = func;
@@ -548,10 +554,11 @@ public class Japath {
 			if (kind.equals("directive")) {
 				return node.ctx.handleDirective(ns, func, node, nits);
 			} else { // so far java
+				if (kind.equals("javascript" )) throw new JapathException("'javascript' not yet supported at '" + this + "'");
 				return Ctx.invoke(ns, func, node, nits);
 			}
 		}
-		@Override public String toString() { return "javaCall[" + kind + ", " + ns + ", " + func + ", " + asList(exprs) + "]"; }
+		@Override public String toString() { return "externalCall[" + kind + ", " + ns + ", " + func + ", " + asList(exprs) + "]"; }
 	}
 	
 
@@ -832,7 +839,7 @@ public class Japath {
 	public static <T> Comparison<T> cmp(Comparison.Op op, Expr expr) { return new Comparison<T>(op, expr); }
 	public static <T> Comparison<T> eq(T o) { return cmpConst(eq, o); }
 	public static <T> Comparison<T> neq(T o) { return cmpConst(neq, o); }
-	public static <T> Expr javaCall(String kind, String ns, String func, Expr[] exprs) { return new JavaCall(kind, ns, func, exprs); }
+	public static <T> Expr externalCall(String kind, String ns, String func, Expr[] exprs) { return new ExternalCall(kind, ns, func, exprs); }
 	public static HasType type(PrimitiveType t) { return new HasType(t); }
 	public static HasType type(String t) { return type(PrimitiveType.valueOf(t)); }
 	public static Union union(Expr... exprs) { return new Union(false, exprs); }

@@ -20,7 +20,7 @@ import static japath3.core.Japath.constExpr;
 import static japath3.core.Japath.create;
 import static japath3.core.Japath.desc;
 import static japath3.core.Japath.filter;
-import static japath3.core.Japath.javaCall;
+import static japath3.core.Japath.externalCall;
 import static japath3.core.Japath.optional;
 import static japath3.core.Japath.paramAppl;
 import static japath3.core.Japath.paramExprAppl;
@@ -39,7 +39,6 @@ import static japath3.core.Japath.varAppl;
 import static japath3.core.Node.nil;
 import static japath3.util.Basics.embraceEsc;
 import static japath3.util.Basics.it;
-import static japath3.wrapper.WJsonOrg.w_;
 
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
@@ -59,7 +58,7 @@ import japath3.core.Japath.Expr;
 import japath3.core.Japath.Filter;
 import japath3.core.Japath.HasType;
 import japath3.core.Japath.Idx;
-import japath3.core.Japath.JavaCall;
+import japath3.core.Japath.ExternalCall;
 import japath3.core.Japath.Optional;
 import japath3.core.Japath.ParamExprAppl;
 import japath3.core.Japath.ParamExprDef;
@@ -82,6 +81,8 @@ import japath3.schema.Schema.SchemaBoolExpr;
 import japath3.schema.Schema.SchemaHasType;
 import japath3.schema.Schema.SchemaQuantifierExpr;
 import japath3.util.Basics;
+import japath3.wrapper.NodeFactory;
+import japath3.wrapper.WJsonOrg;
 
 /**
  * For convenience we use java and vavr collections
@@ -105,7 +106,7 @@ public class Language {
 		return e_(new Env(), path, schemaProc, false);
 	}
 	
-	private static PathExpr e_(Env env, String path, boolean schemaProc, boolean fresh) {
+	public static PathExpr e_(Env env, String path, boolean schemaProc, boolean fresh) {
 		
 		PathExpr p = pathExprCache.get(adaptKey(schemaProc, path));
 		if (p != null && !fresh) {
@@ -116,7 +117,7 @@ public class Language {
 //		System.out.println(">>>>>> " + stringify(p));
 //		p = parse(stringify(p));
 		//
-		pathExprCache.put(adaptKey(schemaProc, path), p);
+		if (!fresh) pathExprCache.put(adaptKey(schemaProc, path), p);
 		return p;
 	}
 
@@ -130,7 +131,7 @@ public class Language {
 		if (ret._2 != null) {
 			throw new JapathException(ret._2);
 		}
-		List<Expr> pe = buildExpr(env, w_(ret._1), schemaProc);
+		List<Expr> pe = buildExpr(env, NodeFactory.w_(ret._1, WJsonOrg.class), schemaProc);
 		p = pe.head() instanceof PathExpr ? (PathExpr) pe.head() : path(pe.head());
 		
 		return p;
@@ -179,7 +180,7 @@ public class Language {
 			String name = x.val("name");
 			Node args = x.node("args");
 			Option<ParamExprDef> ped = env.defs.get(name);
-			if (ped.isEmpty()) throw new JapathException("user-defined expression '" + name + "(" + args + ")' not found");
+			if (ped.isEmpty()) throw new JapathException("expression '" + name + "(" + args + ")' not defined (either not covered by grammar or undefined user-expression)");
 			return List.of(paramExprAppl(name, args == nil ? null : subExprs(env, schemaProc, x)).resolve(env, ped.get(), schemaProc));
 		}
 		if ((x = ast.get("path").node()) != nil) {
@@ -250,7 +251,7 @@ public class Language {
 		if ((x = ast.get("funcCall").node()) != nil) {
 			Node args = x.node("args");
 			// so far only java
-			return List.of(javaCall(x.val("kind"), x.val("ns"), x.val("func"), args == nil ? null : subExprs(env, schemaProc, x)));
+			return List.of(externalCall(x.val("kind"), x.val("ns"), x.val("func"), args == nil ? null : subExprs(env, schemaProc, x)));
 		}
 		
 		if ((x = ast.get("args").node()) != nil)  return buildExpr(env, x, schemaProc);
@@ -333,8 +334,8 @@ public class Language {
 			return ((Comparison) e).op + "(" + stringify0(((Comparison) e).exprs[0]) + ")";
 		} else if (e instanceof HasType) {
 			return "type(" + ((HasType) e).t + ")";
-		} else if (e instanceof JavaCall) {
-			JavaCall c = (JavaCall) e;
+		} else if (e instanceof ExternalCall) {
+			ExternalCall c = (ExternalCall) e;
 			return (c.kind.equals("directive") ? "" : c.kind ) + "::" + (c.ns.equals("") ? "" : c.ns + "::") + c.func + "(" + collect(e, ", ") + ")";
 		} else {
 			return e.toString();

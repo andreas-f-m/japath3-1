@@ -47,31 +47,38 @@ public class PegjsEngineGraal {
 	}
 
 	public Tuple2<JSONObject, String> getAst(String text) {
-
-		String astStr;
-		try {
-			Value func = cx.getBindings("js").getMember("peg$parse");
-			if (func == null) throw new JapathException("fatal error eval pegjs");
+		
+		synchronized (this) { // TODO no shared context in graal possible (->thread local)
 			
-			Value v = func.execute(text);
-			astStr = v.toString();
-
-		} catch (PolyglotException e) {
-
+			String astStr;
 			try {
-				JSONObject error = new JSONObject(e.getGuestObject().toString());
-				JSONObject loc = error.getJSONObject("location");
-				return Tuple.of(null,
-						"japath syntax error at line " + loc.getJSONObject("start").getInt("line")
-						+ ", column "
-						+ loc.getJSONObject("start").getInt("column")
-						+ ": "
-						+ error.get("message"));
+				cx.enter();
+				Value func = cx.getBindings("js").getMember("peg$parse");
+				if (func == null) throw new JapathException("fatal error eval pegjs");
 				
-			} catch (JSONException e1) {
-				throw new JapathException(e1);
+				Value v = func.execute(text);
+				astStr = v.toString();
+				
+			} catch (PolyglotException e) {
+				
+				try {
+					JSONObject error = new JSONObject(e.getGuestObject().toString());
+					JSONObject loc = error.getJSONObject("location");
+					return Tuple.of(null,
+							"japath syntax error at line " + loc.getJSONObject("start").getInt("line")
+							+ ", column "
+							+ loc.getJSONObject("start").getInt("column")
+							+ ": "
+							+ error.get("message"));
+					
+				} catch (JSONException e1) {
+					throw new JapathException(e1);
+				}
+			} finally {
+				cx.leave();
 			}
-		} 
-		return Tuple.of(new JSONObject(astStr), null);
+			return Tuple.of(new JSONObject(astStr), null);
+		}
+
 	}
 }
