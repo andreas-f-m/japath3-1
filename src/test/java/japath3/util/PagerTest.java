@@ -11,9 +11,9 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyIterator;
 import static org.junit.Assert.assertEquals;
 
-import japath3.util.Splitter.F;
+import japath3.util.Pager.PageFunc;
 
-public class SplitterTest {
+public class PagerTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {}
@@ -28,22 +28,22 @@ public class SplitterTest {
 
 		List<Integer> l = asList(1, 2, 3, 4);
 
-		F<Integer> func = (offs, limit) -> {
+		PageFunc<Integer> func = (offs, limit) -> {
 			int to = min(offs + limit, l.size());
 			return to <= offs ? emptyIterator() : l.subList(offs, to).iterator();
 		};
 
-		Splitter<Integer> pww = new Splitter(2).setPageFunc(func);
+		Pager<Integer> pww = new Pager(2, func);
 		for (Integer i : pww) sb.append(i);
 		assertEquals("1234", sb.toString());
 
 		sb.setLength(0);
-		pww = new Splitter(3).setPageFunc(func);
+		pww = new Pager(3, func);
 		for (Integer i : pww) sb.append(i);
 		assertEquals("1234", sb.toString());
 		
 		sb.setLength(0);
-		pww = new Splitter(6).setPageFunc(func);
+		pww = new Pager(6, func);
 		for (Integer i : pww) sb.append(i);
 		assertEquals("1234", sb.toString());
 	}

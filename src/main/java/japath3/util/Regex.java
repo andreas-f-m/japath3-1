@@ -7,6 +7,8 @@ import com.florianingerl.util.regex.Matcher;
 import com.florianingerl.util.regex.Pattern;
 import com.florianingerl.util.regex.PatternSyntaxException;
 
+import japath3.core.JapathException;
+
 public class Regex {
 
 	public static String group(Matcher m, int group) {
@@ -83,5 +85,24 @@ public class Regex {
 
 		Matcher matcher = Pattern.compile(regex).matcher(input);
 		return matcher.find() ?  matcher.group(1) : def;
+	}
+	
+	public static String[] multiExtract(String input, String regex, String... defaults) {
+		
+		Matcher matcher = Pattern.compile(regex).matcher(input);
+		if (!matcher.matches()) return null;
+		int cnt = matcher.groupCount() + 1;
+		String[] ret =  new String[cnt];
+		
+		if (defaults == null || defaults.length == 0) defaults = new String[cnt];
+		if (cnt != defaults.length) throw new JapathException("groups != defaults or no defaults");
+		
+
+		for (int i = 0; i < ret.length; i++) {
+			ret[i] = matcher.group(i);
+			if (ret[i] == null) ret[i] = defaults[i];
+		}
+		
+		return ret;
 	}
 }

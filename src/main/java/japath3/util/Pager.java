@@ -4,22 +4,26 @@ import java.util.Iterator;
 
 import japath3.core.JapathException;
 
-public class Splitter<T> implements Iterable<T> {
+public class Pager<T> implements Iterable<T> {
 
 	@FunctionalInterface
-	public static interface F<T> {
+	public static interface PageFunc<T> {
 
 		public Iterator<T> apply(int offset, int limit);
 	}
 
-	// SolrQuery query;
 	private int pageSize;
 	private int currOffset;
 	private Iterator<T> currIter;
 
-	F<T> pageFunc;
+	PageFunc<T> pageFunc;
 
-	public Splitter(int pageSize) { this.pageSize = pageSize; }
+	public Pager(int pageSize) { this.pageSize = pageSize; }
+
+	public Pager(int pageSize, PageFunc<T> func) {
+		this(pageSize);
+		setPageFunc(func); 
+	}
 
 	private boolean forward(boolean ini) {
 
@@ -50,7 +54,7 @@ public class Splitter<T> implements Iterable<T> {
 		};
 	}
 
-	public Splitter<T> setPageFunc(F<T> func) {
+	private Pager<T> setPageFunc(PageFunc<T> func) {
 		this.pageFunc = func;
 		currOffset = 0;
 		forward(true);
