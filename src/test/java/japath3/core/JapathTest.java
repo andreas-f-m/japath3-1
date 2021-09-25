@@ -292,6 +292,15 @@ public class JapathTest {
 	}
 	
 	@Test
+	public void testConst() {
+		
+		Node n = w_(" {}  ");
+
+		assertIt(n, "[ ]", "' '");
+		
+	}
+	
+	@Test
 	public void testCmp() {
 		
 		Node n = w_(" { v: 1, w: 1, a: true, b: \"lala\" }  ");

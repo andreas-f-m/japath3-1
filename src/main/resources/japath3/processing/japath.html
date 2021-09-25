@@ -19,7 +19,9 @@
 		ret = peg$parse("new $x {cond(true, 99, 88)$h, age: $h}")
 		ret = peg$parse("x[# 1..]")
 		ret = peg$parse("x[# 1]")
-		ret = peg$parse("eq(null)")
+		ret = peg$parse("eq(' ')")
+		ret = peg$parse("'    x  y  '")
+		//ret = peg$parse("'x''")
 
 		document.getElementById("ret").innerHTML = ret
 	</script>

@@ -11,7 +11,7 @@ simpleExpr =
     '(' _ s:simpleExpr ')' _ {return s;} /
     'null' {return {constant: {}};} /
     c:(pi:Number {return pi;} / s:String!(_ ':') {return s;} ) 
-            {return {constant: c};} /
+            {print('>' + c + '>'); return {constant: c};} /
     p:path!(_ ':') {return p;} /
     assignment
 
@@ -196,9 +196,9 @@ digit  = [0-9]
 
 String = SingleQuoteString / DoubleQuoteString
 
-SingleQuoteString = "'" _ s:('\\\''/[^'])* "'" _ { return s.join('').replace(/\\'/g, "'"); } 
+SingleQuoteString = "'" s:('\\\''/[^'])* "'" _ { return s.join('').replace(/\\'/g, "'"); } 
 
-DoubleQuoteString = "\"" _ s:('\\"'/[^\"])* "\"" _ { return s.join('').replace(/\\"/g, '"'); } 
+DoubleQuoteString = "\"" s:('\\"'/[^\"])* "\"" _ { return s.join('').replace(/\\"/g, '"'); } 
 
 Identifier = id:([a-zA-Z_] [a-zA-Z0-9_]*) _ { return flatten(id).join(''); }
 

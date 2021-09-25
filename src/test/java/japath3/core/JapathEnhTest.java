@@ -411,7 +411,7 @@ public class JapathEnhTest {
 			}
 		}
 		
-		Node n = w_(" {a: {b: false, c: 'lala', d: 'lolo'} }  ");		
+		Node n = w_(" {a: {b: false, c: 'lala', d: 'lolo', e: 'a;b', f: '18.03.2021', g:'aa|bb', h:'2017'} }  ");		
 		
 		Ctx.putJInst("m", new Xxx());
 		assertIt(n, "[lala]", "j::m::f(a.c)");
@@ -446,6 +446,15 @@ public class JapathEnhTest {
 		} catch (JapathException e) {
 			System.out.println(e);
 		}
+		
+		assertIt(n, "[a, b]", "a.e.j::str::split(';')");
+
+		assertIt(n, "[aa, bb]", "a.g.j::str::split('\\|')");
+
+		assertIt(n, "[1917]", "a.h.j::str::replace('20', '19')");
+
+		assertIt(n, "[2021-03-18T00:00]", "j::time::germanToIsoDate(a.f)");
+		
 	}
 	
 	@Test public void testLhsRhs() {

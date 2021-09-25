@@ -14,7 +14,8 @@ import io.vavr.collection.Map;
 import io.vavr.collection.Set;
 import io.vavr.collection.TreeSet;
 import japath3.core.Japath.NodeIter;
-import japath3.processing.StandardFuncs;
+import japath3.processing.StringFuncs;
+import japath3.processing.TimeFuncs;
 import japath3.schema.Schema;
 
 public class Ctx {
@@ -35,7 +36,8 @@ public class Ctx {
 	private static Map<Tuple2<String, String>, Tuple3<Object, Method, Boolean>> methodMap;
 	
 	static {
-		putJInst("str", new StandardFuncs());		
+		putJInst("str", new StringFuncs());		
+		putJInst("time", new TimeFuncs());		
 	}
 	
 	public Ctx() {
@@ -162,7 +164,12 @@ public class Ctx {
 			}
 
 		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-			throw new JapathException("cannot invoke " + ns + ":" + func + " (" + e + ")");
+			throw new JapathException("cannot invoke " + ns
+					+ ":"
+					+ func
+					+ " ("
+					+ (e instanceof InvocationTargetException ? ((InvocationTargetException) e).getTargetException() : e)
+					+ ")");
 		}
 	}
 
