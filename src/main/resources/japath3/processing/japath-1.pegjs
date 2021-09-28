@@ -11,7 +11,7 @@ simpleExpr =
     '(' _ s:simpleExpr ')' _ {return s;} /
     'null' {return {constant: {}};} /
     c:(pi:Number {return pi;} / s:String!(_ ':') {return s;} ) 
-            {print('>' + c + '>'); return {constant: c};} /
+            {return {constant: c};} /
     p:path!(_ ':') {return p;} /
     assignment
 

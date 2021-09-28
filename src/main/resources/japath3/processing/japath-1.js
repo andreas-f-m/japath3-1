@@ -154,7 +154,7 @@ function peg$parse(input, options) {
       peg$c10 = function(pi) {return pi;},
       peg$c11 = ":",
       peg$c12 = peg$literalExpectation(":", false),
-      peg$c13 = function(c) {print('>' + c + '>'); return {constant: c};},
+      peg$c13 = function(c) {return {constant: c};},
       peg$c14 = function(p) {return p;},
       peg$c15 = function(y, e) { return {assignment: {lhs: typeof y === 'string' ? { step: { property: y}} : y, rhs: e }}},
       peg$c16 = ".",
