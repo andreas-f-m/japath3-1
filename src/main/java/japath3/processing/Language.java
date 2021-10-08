@@ -2,6 +2,7 @@ package japath3.processing;
 
 
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -44,6 +45,7 @@ import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
+import japath3.core.Ctx;
 import japath3.core.Japath.All;
 import japath3.core.Japath.Assignment;
 import japath3.core.Japath.Bind;
@@ -96,7 +98,7 @@ public class Language {
 	}
 	
 	private static String keywords = 
-			"selector|filter|and|assert|or|xor|not|true|false|cond|imply|optional|opt|every|union|eq|neq|lt|gt|le|ge|call|type|self|def|new|java|j|match|null";
+			"selector|filter|and|assert|or|xor|not|true|false|cond|imply|optional|opt|every|union|eq|neq|lt|gt|le|ge|call|type|self|def|def-script|new|java|j|js|match|null";
 	
 	public static PathExpr e_(String path) {
 		return e_(path, false);
@@ -175,6 +177,13 @@ public class Language {
 			if (env.defs.containsKey(name)) throw new JapathException("user-defined expression '" + name + "' already defined");
 			env.defs = env.defs.put(name, ped);
 			return List.of(ped);
+		}
+		if ((x = ast.get("defScript").node()) != nil) {
+			String s = x.val("s");
+			s = s.replace("\\n", "\n").replace("\\r", "\r");
+			
+			Ctx.loadJs(new StringReader(s), "script");
+			return List.of();
 		}
 		if ((x = ast.get("exprAppl").node()) != nil) {
 			String name = x.val("name");

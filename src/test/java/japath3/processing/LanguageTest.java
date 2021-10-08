@@ -58,9 +58,12 @@ public class LanguageTest extends Language {
 		
 		String input = "or(`x \" \"`, imply(a, b)). some(*, c). b$v.*. a[1][2][#8]. a[#1..]. a[#1..2] .?(a). x?(a). `c\\` \\` §$` . [a, b]. union(or(a, b), union(or(c, d)))."
 				+ "**. * .union ( a, b ). $ x .* . eq ( 88 ). eq ( -1.44E11 ). eq ( \"lolo\" ). eq ( $x ). §. match('la\\'la'). cond(a, b, c). self. text(). "
-				+ "def(func, a.b.#1). func(x, y.z) { \"a\" :(c.d)}. a {x.y, z}. java::sys::func(a, b.c). {c : 0}. j::sys::func(). sys::func(). ::complete";
+				+ "def(func, a.b.#1). func(x, y.z) { \"a\" :(c.d)}. a {x.y, z}. java::sys::func(a, b.c). {c : 0}. j::sys::func(). js::func(). ::complete"
+				+ ". def-script(\"\"\"function aaa(){ \n return bbb}\"\"\")"  
+				;
 		
 		Tuple2<JSONObject, String> ast = Language.getAst(input);
+		System.out.println(ast._2);
 		System.out.println(ast._1.toString(3));
 		assertEquals(astA.replace("\r", ""), ast._1.toString(3));
 		
@@ -193,7 +196,7 @@ public class LanguageTest extends Language {
 			+ "		0)}.\r\n"
 			+ "java::sys::func(\r\n"
 			+ "	).\r\n"
-			+ "javascript::sys::func(\r\n"
+			+ "javascript::func(\r\n"
 			+ "	).\r\n"
 			+ "::complete(\r\n"
 			+ "	)";
@@ -396,13 +399,14 @@ public class LanguageTest extends Language {
 			+ "   }}},\r\n"
 			+ "   {\"step\": {\"funcCall\": {\r\n"
 			+ "      \"func\": \"func\",\r\n"
-			+ "      \"ns\": \"sys\",\r\n"
+			+ "      \"ns\": \"\",\r\n"
 			+ "      \"kind\": \"javascript\"\r\n"
 			+ "   }}},\r\n"
 			+ "   {\"step\": {\"funcCall\": {\r\n"
 			+ "      \"func\": \"complete\",\r\n"
 			+ "      \"ns\": \"\",\r\n"
 			+ "      \"kind\": \"directive\"\r\n"
-			+ "   }}}\r\n"
+			+ "   }}},\r\n"
+			+ "   {\"step\": {\"defScript\": {\"s\": \"function aaa(){ \\\\n return bbb}\"}}}\r\n"
 			+ "]}}";
 }

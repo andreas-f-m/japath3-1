@@ -1,10 +1,13 @@
 package japath3.core;
 
+import static japath3.core.Japath.empty;
+import static japath3.core.Japath.single;
+
+import java.io.Reader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import static japath3.core.Japath.empty;
-import static japath3.core.Japath.single;
+import org.graalvm.polyglot.Value;
 
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -14,9 +17,11 @@ import io.vavr.collection.Map;
 import io.vavr.collection.Set;
 import io.vavr.collection.TreeSet;
 import japath3.core.Japath.NodeIter;
+import japath3.processing.EngineGraal;
 import japath3.processing.StringFuncs;
 import japath3.processing.TimeFuncs;
 import japath3.schema.Schema;
+import japath3.util.Basics.Ref;
 
 public class Ctx {
 
@@ -35,9 +40,14 @@ public class Ctx {
 	// (ns, func) -> (inst, method, has-val-args)
 	private static Map<Tuple2<String, String>, Tuple3<Object, Method, Boolean>> methodMap;
 	
+	// js
+	private static EngineGraal jsEngine;
+	
 	static {
-		putJInst("str", new StringFuncs());		
-		putJInst("time", new TimeFuncs());		
+		loadJInst("str", new StringFuncs());		
+		loadJInst("time", new TimeFuncs());
+		
+		jsEngine = new EngineGraal();
 	}
 	
 	public Ctx() {
@@ -124,13 +134,13 @@ public class Ctx {
 		}
 	}
 	
-	public static void putJInst( Tuple2<String, Object>... nss) {
+	public static void loadJInst( Tuple2<String, Object>... nss) {
 		for (Tuple2<String, Object> ns : nss) {
-			putJInst(ns._1, ns._2);
+			loadJInst(ns._1, ns._2);
 		}
 	}
 	
-	public static void putJInst(String ns, Object o) {
+	public static void loadJInst(String ns, Object o) {
 		if (nsToEnvObj.containsKey(ns)) throw new JapathException("multiple def of '" + ns + "'");
 		nsToEnvObj = nsToEnvObj.put(ns, o);
 	}
@@ -147,13 +157,13 @@ public class Ctx {
 		try {
 			try {
 				if (m._3) {
-					Object[] vals = new Object[nits.length];
-					for (int i = 0; i < vals.length; i++) {
+					Object[] args = new Object[nits.length];
+					for (int i = 0; i < args.length; i++) {
 						Object val = nits[i].val(null);
 						if (val == null) return empty;
-						vals[i] = val;
+						args[i] = val;
 					}
-					Object ret = m._2.invoke(m._1, vals);
+					Object ret = m._2.invoke(m._1, args);
 					return ret == null ? empty : Japath.singleObject(ret, node);
 				} else {
 					return nits.length == 0 ? (NodeIter) m._2.invoke(m._1, node) : (NodeIter) m._2.invoke(m._1, node, nits);
@@ -171,6 +181,49 @@ public class Ctx {
 					+ (e instanceof InvocationTargetException ? ((InvocationTargetException) e).getTargetException() : e)
 					+ ")");
 		}
+	}
+	
+	public static void loadJs(Reader js, String name) {
+		jsEngine.eval(js, name);
+	}
+	
+	public static NodeIter invokeJs(String func, Node node, NodeIter[] nits) {
+
+		Object[] args = new Object[nits.length + 1];
+		args[0] = node.val();
+		for (int i = 0; i < nits.length; i++) {
+			Node n = nits[i].node();
+			String messPrefix = "invoking js '" + func + "': " + (i + 1);
+			if (nits[i].hasNext()) throw new JapathException(messPrefix + "-th argument must be a single node");
+			if (!n.isLeaf()) throw new JapathException(messPrefix + "-th argument must be a primitive value");
+
+			args[i + 1] = n == Node.nil || n.isNull() ? null : n.val();
+		}
+		Value v = jsEngine.exec(func, args);
+
+		Ref<Integer> i = Ref.of(0);
+
+		if (v.hasArrayElements()) {
+			
+			return new NodeIter() {
+
+				@Override public boolean hasNext() { 
+					return i.r < v.getArraySize(); }
+
+				@Override public Node next() {
+					Object o = v.getArrayElement(i.r++).as(Object.class);
+					check(func, i.r, o);
+					return new Node.DefaultNode(o == null ? node.nullWo() : o, node.ctx);
+				}
+
+			};
+		} else {
+			Object o = v.as(Object.class);
+			return Japath.singleObject(o == null ? node.nullWo() : o, node);
+		}
+
+	}
+	private static void check(String func, Integer i, Object o) { 
 	}
 
 	public NodeIter handleDirective(String ns, String func, Node node, NodeIter[] nits) {
@@ -197,5 +250,6 @@ public class Ctx {
 		}
 		throw new JapathException("directive '" + ns + ":" + func + "' not found");
 	}
+
 
 }

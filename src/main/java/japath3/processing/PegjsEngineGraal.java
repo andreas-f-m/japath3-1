@@ -4,6 +4,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 
+import org.apache.commons.lang3.StringUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -64,11 +65,21 @@ public class PegjsEngineGraal {
 				try {
 					JSONObject error = new JSONObject(e.getGuestObject().toString());
 					JSONObject loc = error.getJSONObject("location");
+					
+					int line = loc.getJSONObject("start").getInt("line");
+					int col = loc.getJSONObject("start").getInt("column");
+					
+					String frag = "..." + StringUtils.abbreviate(text.split("\n")[line -1].substring(col > 0 ? col - 1 : 0), 20);
+//					System.out.println(">>> " + frag);
+					
 					return Tuple.of(null,
-							"japath syntax error at line " + loc.getJSONObject("start").getInt("line")
+							"japath syntax error at line " + line
 							+ ", column "
-							+ loc.getJSONObject("start").getInt("column")
+							+ col
 							+ ": "
+							+ "\""
+							+ frag
+							+ "\", "
 							+ error.get("message"));
 					
 				} catch (JSONException e1) {

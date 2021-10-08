@@ -15,8 +15,8 @@ public class StringFuncs {
 
 		if (niRegex.length == 0 || niRegex.length > 1) throw new JapathException("split must have exactly one argument");
 
-		String input = ctxNode.val().toString();
-		String regex = niRegex[0].val().toString();
+		String input = ctxNode.val();
+		String regex = niRegex[0].val();
 		
 		List<String> filter = List.of(input.split(regex)).map(s -> {
 			return s.trim();
@@ -37,7 +37,7 @@ public class StringFuncs {
 		
 		if (niRegex.length == 0 || niRegex.length > 1) throw new JapathException("clean must have exactly one argument");
 		
-		String regex = niRegex[0].val().toString();
+		String regex = niRegex[0].val();
 		String input = ctxNode.val().toString().trim();
 		
 		String cleaned = "";
@@ -53,12 +53,13 @@ public class StringFuncs {
 		
 		if (nits.length == 0 || nits.length > 2) throw new JapathException("replace must have exactly two arguments");
 
-		String val = ctxNode.val().toString();
-		String regex = nits[0].val().toString();
-		String repl = nits[1].val().toString();
+		String val = ctxNode.val();
+		String regex = nits[0].val();
+		String repl = nits[1].val();
 		
 		return Japath.singleObject(val.replaceAll(regex, repl),
 				ctxNode);
 	}
+
 	
 }

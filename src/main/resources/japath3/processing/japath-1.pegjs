@@ -37,7 +37,7 @@ step = x:(
     self / wild / selector / union / comparison / boolExpr / 
     filter / cond  / optional / 
     type / text / var /
-    exprDef / argNumber / exprAppl / create / struct /
+    exprDef / scriptDef / argNumber / exprAppl / create / struct /
     funcCall /
     property // / subscript
      
@@ -56,7 +56,7 @@ wild =
 
 ////
 selector = x:(
-    'selector' _ / '§' _ 
+    '%' _ / /* deprecated: */ 'selector' _ / '§' _ 
 )
     { return {selector: x}; }
 
@@ -124,6 +124,10 @@ exprDef = 'def' _  '(' _ id:Identifier ',' _ e:simpleExpr ')' _
     { return {def: {name: id , expr: e}}; }
 
 ////
+scriptDef = 'def-script' _  '(' _ s:MultilineString ')' _
+    { return {defScript: {s: s}}; }
+
+////
 argNumber = '#' i:index
     { return {argNumber: i}; }
 
@@ -142,12 +146,14 @@ struct = '{' _ a:structArgs '}' _
     { return { struct: {args: a} }; }
 
 funcCall =
-    '::' _ func:Identifier a:('(' _ args? ')')? _ { return { funcCall: {kind: 'directive', ns: '', func: func, args: a !== null ? a[2] : null } }; } /
 
-    (('js'/'javascript') _ '::' _)? ns:Identifier '::' _ func:Identifier '(' _ a:args? ')' _ { return { funcCall: {kind: 'javascript', ns: ns, func: func, args: a} }; } /
+//    (('js'/'javascript') _ '::' _)? ns:Identifier '::' _ func:Identifier '(' _ a:args? ')' _ { return { funcCall: {kind: 'javascript', ns: ns, func: func, args: a} }; } /
+    ('js'/'javascript') _ '::' _ func:Identifier '(' _ a:args? ')' _ { return { funcCall: {kind: 'javascript', ns: '', func: func, args: a} }; } /
 
-    'j''ava'? _ '::' _ ns:Identifier '::' _ func:Identifier '(' _ a:args? ')' _ { return { funcCall: {kind: 'java', ns: ns, func: func, args: a} }; }
-    
+    'j''ava'? _ '::' _ ns:Identifier '::' _ func:Identifier '(' _ a:args? ')' _ { return { funcCall: {kind: 'java', ns: ns, func: func, args: a} }; } /
+
+    '::' _ func:Identifier a:('(' _ args? ')')? _ { return { funcCall: {kind: 'directive', ns: '', func: func, args: a !== null ? a[2] : null } }; }
+
 ////
 property = x:(
     Identifier / QIdentifier
@@ -194,11 +200,14 @@ digit  = [0-9]
 /**/
 
 
-String = SingleQuoteString / DoubleQuoteString
+String = SingleQuoteString / MultilineString / DoubleQuoteString 
 
 SingleQuoteString = "'" s:('\\\''/[^'])* "'" _ { return s.join('').replace(/\\'/g, "'"); } 
 
 DoubleQuoteString = "\"" s:('\\"'/[^\"])* "\"" _ { return s.join('').replace(/\\"/g, '"'); } 
+
+MultilineString = 
+    '"""' s:(!'"""'.)* '"""' _ { return flatten(s).join('').replace(/\n/g, '\\n').replace(/\r/g, '\\r'); } 
 
 Identifier = id:([a-zA-Z_] [a-zA-Z0-9_]*) _ { return flatten(id).join(''); }
 

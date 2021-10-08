@@ -21,6 +21,7 @@
 		ret = peg$parse("x[# 1]")
 		ret = peg$parse("eq(' ')")
 		ret = peg$parse("'    x  y  '")
+		ret = peg$parse("f(\"\"\"aaa \n bbb\"\"\")")
 		//ret = peg$parse("'x''")
 
 		document.getElementById("ret").innerHTML = ret

@@ -553,9 +553,13 @@ public class Japath {
 			for (int i = 0; i < nits.length; i++) nits[i] = exprs[i].eval(node);
 			if (kind.equals("directive")) {
 				return node.ctx.handleDirective(ns, func, node, nits);
-			} else { // so far java
-				if (kind.equals("javascript" )) throw new JapathException("'javascript' not yet supported at '" + this + "'");
+			} else if (kind.equals("java")) {
 				return Ctx.invoke(ns, func, node, nits);
+			} else if (kind.equals("javascript")) {
+				
+				return Ctx.invokeJs(func, node, nits);
+			} else {
+				throw new JapathException("'" + kind + "' not supported at '" + this + "'");
 			}
 		}
 		@Override public String toString() { return "externalCall[" + kind + ", " + ns + ", " + func + ", " + asList(exprs) + "]"; }

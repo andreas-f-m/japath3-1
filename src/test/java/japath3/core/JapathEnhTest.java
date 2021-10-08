@@ -17,6 +17,10 @@ import static japath3.wrapper.NodeFactory.w_;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.io.FileReader;
+import java.util.stream.Collectors;
+
+import org.graalvm.polyglot.Value;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -26,7 +30,9 @@ import japath3.core.Japath.Expr;
 import japath3.core.Japath.NodeIter;
 import japath3.core.Japath.PathExpr;
 import japath3.core.Japath.Selection;
+import japath3.processing.EngineGraal;
 import japath3.processing.Language;
+import japath3.util.Basics;
 
 public class JapathEnhTest {
 
@@ -413,7 +419,7 @@ public class JapathEnhTest {
 		
 		Node n = w_(" {a: {b: false, c: 'lala', d: 'lolo', e: 'a;b', f: '18.03.2021', g:'aa|bb', h:'2017'} }  ");		
 		
-		Ctx.putJInst("m", new Xxx());
+		Ctx.loadJInst("m", new Xxx());
 		assertIt(n, "[lala]", "j::m::f(a.c)");
 		assertIt(n, "[false]", "j::m::f(a.b)");
 
@@ -427,7 +433,7 @@ public class JapathEnhTest {
 		assertIt(n, "[]", "j::m::conc(a.c, a.x)");
 		
 		
-		Ctx.putJInst(Tuple.of("x", (Expr) x -> {
+		Ctx.loadJInst(Tuple.of("x", (Expr) x -> {
 			return single(x);
 		}));
 		
@@ -455,6 +461,80 @@ public class JapathEnhTest {
 
 		assertIt(n, "[2021-03-18T00:00]", "j::time::germanToIsoDate(a.f)");
 		
+	}
+	
+	@Test public void testRawScript() throws Exception {
+
+		FileReader r = new FileReader("src/test/resources/japath3/core/script-1.js");
+		EngineGraal eng = new EngineGraal().eval(r, "test");
+
+		Node n = w_(" {a: false, b: 'lala', c: 99, d: null}  ");		
+		
+		Value v = eng.exec("f", n.val(), n.get("a").val(), n.get("b").val(), n.get("c").val(), n.get("d").val());
+		
+		assertEquals("(5)[true, \"lalax\", 100, JavaObject[org.json.JSONObject$Null], null]", v.toString());
+
+		r = new FileReader("src/test/resources/japath3/core/script-1.js");
+		Ctx.loadJs(r, "test");
+	
+		NodeIter nit = Ctx.invokeJs("f", n, new NodeIter[] {n.get("a"), n.get("b"), n.get("c"), n.get("d")});
+		assertEquals("[true, lalax, 100, null, null]", Basics.stream(nit).collect(Collectors.toList()).toString());
+	}
+	
+	@Test public void testJsCall() throws Exception {
+		
+		Node n = w_(" {a: false, b: 'lala', c: 99, d: null}  ");
+		
+		FileReader r = new FileReader("src/test/resources/japath3/core/script-1.js");
+		Ctx.loadJs(r, "test");
+		
+		assertIt(n, "[true, lalax, 100, null, null]", "js::f(a, b, c, d)");
+
+		assertIt(n, "[true, nullx, 100, null, null]", "js::f(a, bb, c, d)");
+		
+		try {
+			assertIt(n, "", "js::f(_, b, c, d)");
+			fail();
+		} catch (JapathException e) {
+			assertEquals("invoking js 'f': 1-th argument must be a primitive value", e.getMessage());
+		}
+
+		try {
+			assertIt(n, "", "js::ff()");
+			fail();
+		} catch (JapathException e) {
+			assertEquals("japath3.core.JapathException: js func 'ff' does not exists", e.getMessage());
+		}
+		
+		assertIt(n, "[true, lalax, 100, null, null]", 
+				
+				""
+				+ "def-script("
+				+ "\"\"\""
+				+ "function f(x, a, b, c, d) {\r\n"
+				+ "	\r\n"
+				+ "	print(x, a, b, c, d)\r\n"
+				+ "	return [!a, b + 'x', c + 1, d, null]\r\n"
+				+ "}"
+				+ "\"\"\")."
+				+ " js::f(a, b, c, d)");
+		
+		assertIt(n, "[99]", 
+				
+				""
+						+ "def-script("
+						+ "\"\"\""
+						+ "function f(x, a, b, c, d) {\r\n"
+						+ "	\r\n"
+						+ "	print(x, a, b, c, d)\r\n"
+						+ "	return [!a, b + 'x', c + 1, d, null]\r\n"
+						+ "}"
+						+ "\"\"\")."
+						+ "def-script("
+						+ "\"\"\""
+						+ "function f(x, a, b, c, d) {return 99}"
+						+ "\"\"\")."
+						+ " js::f(a, b, c, d)");
 	}
 	
 	@Test public void testLhsRhs() {
@@ -485,4 +565,5 @@ public class JapathEnhTest {
 				+ "", sb.toString());
 		
 	}
+
 }
