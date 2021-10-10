@@ -7,6 +7,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import static io.vavr.collection.List.empty;
+import static io.vavr.control.Option.none;
 import static japath3.core.Japath.__;
 import static japath3.core.Japath.all;
 import static japath3.core.Japath.every;
@@ -37,6 +38,7 @@ import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
 import io.vavr.collection.Set;
+import io.vavr.control.Option;
 import japath3.core.Ctx;
 import japath3.core.Japath;
 import japath3.core.Japath.BoolExpr;
@@ -181,13 +183,18 @@ public class Schema {
 		return this;
 	}
 
-	public Schema setSchema(String schemaText) {
+	public Schema setSchema(Expr schemaExpr) {
 		violations = List.empty();
-		this.schemaExpr = e_(schemaText, true);
+		this.schemaExpr = schemaExpr;
 		// TODO here a quick 'and'-test, for now on the string
 //		if (!this.schemaExpr.toString().startsWith("path(and("))
 //			throw new JapathException("schema top expression has to be 'and(...)'");
 		//
+		return this;
+	}
+	
+	public Schema setSchema(String schemaText) {
+		setSchema(e_(schemaText, true));
 		return this;
 	}
 
@@ -198,6 +205,10 @@ public class Schema {
 			throw new JapathException(e);
 		}
 		return this;
+	}
+	
+	public Option<String> getValidityViolations(Node n) {
+		return checkValidity(n) ? none() : Option.of(annotatedViolations(n));
 	}
 	
 	public boolean checkValidity(Node n) {

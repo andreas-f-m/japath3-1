@@ -7,6 +7,7 @@ import org.junit.Test;
 import static japath3.wrapper.WJsonOrg.w_;
 import static org.junit.Assert.assertEquals;
 
+import japath3.core.Japath;
 import japath3.core.Node;
 
 public class ModuleTest {
@@ -23,7 +24,7 @@ public class ModuleTest {
 		
 		Node n = w_(" {a: {b: false, c: 'lala', d: 'lolo'} }  ");
 
-		assertEquals("lala", m.select(n, "bcond").val());
+		assertEquals("lala", Japath.select(n, m.getExpr("bcond")).val());
 		
 		// deferred TODO
 //		assertEquals("lala", m.select(n, "a.bcond(b, b, c)").val());
