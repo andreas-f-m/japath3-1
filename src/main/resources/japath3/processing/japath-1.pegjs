@@ -56,7 +56,7 @@ wild =
 
 ////
 selector = x:(
-    '%' _ / /* deprecated: */ 'selector' _ / '§' _ 
+    '%' _ / /* deprecated : */ 'selector' _ / '§' _ 
 )
     { return {selector: x}; }
 
@@ -162,7 +162,7 @@ property = x:(
 
 ////
 subscript = 
-    '[' _ '#' _ i:index upper:('..' _ (index)?)? ']' _ { return {subscript: i, seq: true, upper: upper === null ? null : (upper[2] === null ? -1 : upper[2]) }; } /
+    '[' _ '#' _ i:index upper:('..' _ index?)? ']' _ { return {subscript: i, seq: true, upper: upper === null ? null : (upper[2] === null ? -1 : upper[2]) }; } /
     '[' _ i:index ']' _ { return {subscript: i}; } 
 //-
 
@@ -176,12 +176,12 @@ binding = '$' _  id:Identifier { return { step: {bind: id}}; }
 
 ////
 args = x:(
-    simpleExpr ((',' _ ) simpleExpr )* 
+    simpleExpr (',' _ simpleExpr )* 
 )
     { return skip(flatten(x), ','); }
 
 structArgs = x:(
-    assignment ((',' _ ) assignment )* 
+    assignment (',' _ assignment )* 
 )
     { return skip(flatten(x), ','); }
 
