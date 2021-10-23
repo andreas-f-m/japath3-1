@@ -519,6 +519,7 @@ public class JapathEnhTest {
 				+ "\"\"\")."
 				+ " js::f(a, b, c, d)");
 		
+		// Overwrite f
 		assertIt(n, "[99]", 
 				
 				""
@@ -535,6 +536,37 @@ public class JapathEnhTest {
 						+ "function f(x, a, b, c, d) {return 99}"
 						+ "\"\"\")."
 						+ " js::f(a, b, c, d)");
+		
+		// func overwrite
+		String script = ""
+				+ "def-script("
+				+ "\"\"\""
+				+ "load('src/test/resources/japath3/core/script-1.js')\r\n"
+				+ "function g(x, a, b, c, d) {"
+				+ "return f(x, a, b, c, d)"
+				+ "}"
+				+ "\"\"\")."
+				+ " js::g(a, b, c, d)";
+		System.out.println(script);
+		assertIt(n, "[true, lalax, 100, null, null]", 				
+				script);
+
+		// 'npm install -g browserify'; 'browserify --standalone xxx index.js -o bundle.js'
+		script = ""
+				+ "def-script("
+				+ "\"\"\""
+				+ "load('src/test/resources/japath3/core/bundle.js')\r\n"
+				+ "function g() {"
+				+ "const encode = bundle.Buffer.from('lalilu').toString('base64')\r\n"
+				+ "console.log(encode);"
+				+ "return encode"
+				+ "}"
+				+ "\"\"\")."
+				+ " js::g()";
+		System.out.println(script);
+		assertIt(n, "[bGFsaWx1]", 				
+				script);
+		
 	}
 	
 	@Test public void testLhsRhs() {

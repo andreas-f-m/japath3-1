@@ -16,7 +16,7 @@ public class EngineGraal {
 	public EngineGraal() {
 
 		try {
-			cx = Context.newBuilder().allowAllAccess(true).build();
+			cx = Context.newBuilder("js").allowIO(true).allowAllAccess(true).build();
 		} catch (Exception e) {
 			throw new JapathException(e);
 		}
@@ -25,6 +25,7 @@ public class EngineGraal {
 	public EngineGraal eval(Reader js, String name) {	
 		try {
 			cx.eval(Source.newBuilder("js", js, name).build());
+//			cx.eval(Source.newBuilder("js", js, name + ".mjs").build());
 
 		} catch (Exception e) {
 			throw new JapathException(e);
